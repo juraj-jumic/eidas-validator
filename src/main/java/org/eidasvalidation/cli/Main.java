@@ -1,24 +1,16 @@
 package org.eidasvalidation.cli;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import eu.europa.esig.dss.spi.DSSUtils;
-import eu.europa.esig.dss.spi.x509.CertificateSource;
-import eu.europa.esig.dss.spi.x509.CommonTrustedCertificateSource;
 import org.eidasvalidation.engine.SignatureResult;
-import org.eidasvalidation.engine.TrustSummary;
-import org.eidasvalidation.engine.ValidationEngine;
 import org.eidasvalidation.engine.ValidationException;
-import org.eidasvalidation.engine.ValidationReport;
-import org.eidasvalidation.engine.ValidationRequest;
-import org.eidasvalidation.engine.dss.DssValidationEngine;
-import org.eidasvalidation.engine.dss.EuTrustedLists;
 import org.eidasvalidation.explain.Explanation;
-import org.eidasvalidation.explain.Explainer;
-import org.eidasvalidation.explain.Verdict;
+import org.eidasvalidation.report.HtmlReport;
+import org.eidasvalidation.report.Report;
+import org.eidasvalidation.report.ReportJson;
+import org.eidasvalidation.report.SignatureReport;
+import org.eidasvalidation.service.ValidationService;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -27,16 +19,12 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * Command line entry point.
+ * Command line entry point: {@code eidas-validator <file>} validates a document;
+ * {@code eidas-validator serve} starts the local web interface.
  *
  * <p>Exit codes: 0 all signatures valid, 1 at least one invalid, 2 indeterminate, 3 no signature,
  * 4 could not validate.
@@ -44,6 +32,7 @@ import java.util.concurrent.Callable;
 @Command(name = "eidas-validator",
         mixinStandardHelpOptions = true,
         versionProvider = Main.Version.class,
+        subcommands = {ServeCommand.class},
         description = "Checks the electronic signatures in a PDF and explains the result in plain language.")
 public final class Main implements Callable<Integer> {
 
@@ -53,45 +42,31 @@ public final class Main implements Callable<Integer> {
     static final int EXIT_NO_SIGNATURE = 3;
     static final int EXIT_ERROR = 4;
 
-    @Parameters(index = "0", description = "PDF file to validate.")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<document>", description = "PDF file to validate.")
     Path document;
 
     @Option(names = "--at", description = "Validation time as ISO-8601 instant (default: now).")
     Instant validationTime;
 
-    @Option(names = "--trusted-lists", negatable = true, defaultValue = "true", fallbackValue = "true",
-            description = "Use the EU trusted lists (LOTL) as trust anchors (default: on; --no-trusted-lists to skip).")
-    boolean trustedLists;
-
-    @Option(names = "--offline", description = "Never use the network: trusted lists from cache only, no revocation lookups.")
-    boolean offline;
-
     @Option(names = "--online", description = "Allow CRL, OCSP and AIA lookups over the network for the signer's "
             + "certificate chain (default: off).")
     boolean online;
 
-    @Option(names = "--cache-dir", paramLabel = "<dir>",
-            description = "Where downloaded trusted lists are kept (default: ~/.eidas-validator/tl-cache).")
-    Path cacheDir = Path.of(System.getProperty("user.home"), ".eidas-validator", "tl-cache");
-
-    @Option(names = "--tl-max-age", paramLabel = "<hours>", defaultValue = "24",
-            description = "Re-download trusted lists older than this (default: 24).")
-    long tlMaxAgeHours;
-
-    @Option(names = "--lotl-signers", paramLabel = "<file>",
-            description = "PEM bundle with the LOTL signing certificates from the Official Journal "
-                    + "(default: the bundled copy).")
-    Path lotlSigners;
-
-    @Option(names = "--trust", paramLabel = "<cert>",
-            description = "Additional certificate file (PEM or DER) to accept as a trust anchor. Repeatable.")
-    List<Path> trustAnchors = new ArrayList<>();
+    @Mixin
+    TrustOptions trust;
 
     @Option(names = "--json", description = "Print the report as JSON instead of text.")
     boolean json;
 
-    @Option(names = "--engine-report", description = "Write the engine's own report (DSS simple report XML) to this file.")
+    @Option(names = "--html", paramLabel = "<file>", description = "Also write the readable HTML report to this file.")
+    Path htmlOut;
+
+    @Option(names = "--engine-report", paramLabel = "<file>",
+            description = "Write the engine's own report (DSS simple report XML) to this file.")
     Path engineReportOut;
+
+    @CommandLine.Spec
+    CommandLine.Model.CommandSpec spec;
 
     public static void main(String[] args) {
         System.exit(new CommandLine(new Main()).execute(args));
@@ -99,61 +74,32 @@ public final class Main implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
-        PrintStream out = System.out;
+        if (document == null) {
+            spec.commandLine().usage(System.err);
+            return EXIT_ERROR;
+        }
         if (!Files.isRegularFile(document)) {
             System.err.println("Not a file: " + document);
             return EXIT_ERROR;
         }
-        if (offline && online) {
+        if (trust.offline && online) {
             System.err.println("--offline and --online cannot be combined.");
             return EXIT_ERROR;
         }
 
-        List<CertificateSource> sources = new ArrayList<>();
-        TrustSummary summary;
-
-        if (trustedLists) {
-            EuTrustedLists.Loaded loaded;
-            try {
-                loaded = EuTrustedLists
-                        .configure(cacheDir, Duration.ofHours(tlMaxAgeHours), offline, lotlSigners)
-                        .load();
-            } catch (IOException | RuntimeException e) {
-                System.err.println("Cannot load the EU trusted lists: " + e.getMessage());
-                System.err.println("Use --no-trusted-lists to validate integrity only.");
-                return EXIT_ERROR;
-            }
-            sources.add(loaded.source());
-            summary = loaded.summary();
-        } else {
-            summary = TrustSummary.none();
-        }
-
-        if (!trustAnchors.isEmpty()) {
-            CommonTrustedCertificateSource extra = new CommonTrustedCertificateSource();
-            for (Path anchor : trustAnchors) {
-                try {
-                    extra.addCertificate(DSSUtils.loadCertificate(anchor.toFile()));
-                } catch (RuntimeException e) {
-                    System.err.println("Cannot read trust anchor " + anchor + ": " + e.getMessage());
-                    return EXIT_ERROR;
-                }
-            }
-            sources.add(extra);
-            summary = trustedLists ? withExtraAnchors(summary, trustAnchors.size())
-                    : TrustSummary.anchors(trustAnchors.size());
-        }
-        if (sources.isEmpty()) {
-            sources.add(new CommonTrustedCertificateSource());
-        }
-
-        ValidationEngine engine = new DssValidationEngine(sources, summary, online && !offline);
-        ValidationRequest request = new ValidationRequest(document,
-                validationTime == null ? Instant.now() : validationTime);
-
-        ValidationReport report;
+        ValidationService service;
         try {
-            report = engine.validate(request);
+            service = ValidationService.create(trust.toOptions());
+        } catch (IOException | RuntimeException e) {
+            System.err.println("Cannot load trust data: " + e.getMessage());
+            System.err.println("Use --no-trusted-lists to validate integrity only.");
+            return EXIT_ERROR;
+        }
+
+        Report report;
+        try {
+            report = service.validate(document, document.getFileName().toString(),
+                    validationTime == null ? Instant.now() : validationTime, online);
         } catch (ValidationException e) {
             System.err.println(e.getMessage());
             return EXIT_ERROR;
@@ -162,30 +108,19 @@ public final class Main implements Callable<Integer> {
         if (engineReportOut != null) {
             Files.writeString(engineReportOut, report.engineReport(), StandardCharsets.UTF_8);
         }
-
-        boolean tl = report.trust().usesTrustedLists();
-        List<Explanation> explanations = new ArrayList<>();
-        for (SignatureResult s : report.signatures()) {
-            explanations.add(Explainer.explain(s, report.validationTime(), tl));
+        if (htmlOut != null) {
+            Files.writeString(htmlOut, HtmlReport.render(report), StandardCharsets.UTF_8);
         }
-
         if (json) {
-            printJson(out, report, explanations);
+            System.out.println(ReportJson.write(report));
         } else {
-            printText(out, report, explanations);
+            printText(System.out, report);
         }
-        return exitCode(explanations);
+        return report.exitCode();
     }
 
-    private static TrustSummary withExtraAnchors(TrustSummary tl, int extra) {
-        return new TrustSummary(tl.source() + " plus " + extra + " anchor file(s) from the command line",
-                tl.synchronisedAt(), tl.lotlSequenceNumber(), tl.lotlIssued(), tl.lotlNextUpdate(),
-                tl.lotlSignatureValid(), tl.trustedLists(), tl.trustedListsValid(), tl.certificates() + extra,
-                tl.problems());
-    }
-
-    private void printText(PrintStream out, ValidationReport report, List<Explanation> explanations) {
-        out.println("File:       " + document.getFileName());
+    private static void printText(PrintStream out, Report report) {
+        out.println("File:       " + report.file());
         out.println("Checked at: " + report.validationTime());
         out.println("Engine:     " + report.engine());
         out.println("Trust data: " + report.trust().describe());
@@ -193,15 +128,15 @@ public final class Main implements Callable<Integer> {
             out.println("            note: " + problem);
         }
         out.println();
-        if (!report.hasSignatures()) {
+        if (report.signatures().isEmpty()) {
             out.println("No signature found in this document.");
             return;
         }
         int n = 1;
-        for (int i = 0; i < explanations.size(); i++) {
-            SignatureResult s = report.signatures().get(i);
-            Explanation e = explanations.get(i);
-            out.println("Signature " + n++ + " of " + explanations.size()
+        for (SignatureReport sr : report.signatures()) {
+            SignatureResult s = sr.result();
+            Explanation e = sr.explanation();
+            out.println("Signature " + n++ + " of " + report.signatures().size()
                     + (s.signedBy() == null ? "" : " by " + s.signedBy()));
             out.println("  " + e.verdict() + ": " + e.headline());
             out.println("  " + e.detail());
@@ -220,45 +155,6 @@ public final class Main implements Callable<Integer> {
                     + (s.qualification() == null ? "" : ", qualification " + s.qualification()));
             out.println();
         }
-    }
-
-    private void printJson(PrintStream out, ValidationReport report, List<Explanation> explanations)
-            throws IOException {
-        ObjectMapper mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .enable(SerializationFeature.INDENT_OUTPUT);
-        Map<String, Object> doc = new LinkedHashMap<>();
-        doc.put("reportVersion", 2);
-        doc.put("file", document.getFileName().toString());
-        doc.put("validationTime", report.validationTime());
-        doc.put("engine", report.engine());
-        doc.put("trust", report.trust());
-        List<Map<String, Object>> sigs = new ArrayList<>();
-        for (int i = 0; i < explanations.size(); i++) {
-            Map<String, Object> sig = new LinkedHashMap<>();
-            sig.put("explanation", explanations.get(i));
-            sig.put("result", report.signatures().get(i));
-            sigs.add(sig);
-        }
-        doc.put("signatures", sigs);
-        out.println(mapper.writeValueAsString(doc));
-    }
-
-    static int exitCode(List<Explanation> explanations) {
-        if (explanations.isEmpty()) {
-            return EXIT_NO_SIGNATURE;
-        }
-        int code = EXIT_VALID;
-        for (Explanation e : explanations) {
-            if (e.verdict() == Verdict.INVALID) {
-                return EXIT_INVALID;
-            }
-            if (e.verdict() == Verdict.INDETERMINATE) {
-                code = EXIT_INDETERMINATE;
-            }
-        }
-        return code;
     }
 
     /** Reads the version from the filtered engine.properties resource. */

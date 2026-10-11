@@ -37,10 +37,35 @@ Options:
 | `--tl-max-age <hours>` | Re-download lists older than this (default 24) |
 | `--lotl-signers <file>` | Override the bundled LOTL signing certificates |
 | `--trust <cert>` | Accept an extra PEM/DER certificate as a trust anchor (repeatable) |
-| `--json` | Machine-readable report instead of text |
+| `--json` | Machine-readable report (version 3) instead of text |
+| `--html <file>` | Also write the readable, self-contained HTML report |
 | `--engine-report <file>` | Save the DSS simple report XML for the technical view |
 
 Exit codes: `0` valid, `1` invalid, `2` indeterminate, `3` no signature, `4` could not validate.
+
+## Local web interface
+
+```bash
+java -jar target/eidas-validator.jar serve
+```
+
+Then open http://127.0.0.1:8765/ (change with `--port`; the trust options above apply too).
+Choose a PDF, optionally allow online revocation checks, and you get the HTML report; add a
+`format=json` field to the form post for JSON.
+
+The server binds to the loopback interface only and refuses requests whose `Host` header is not
+a loopback name or whose `Origin` is another site, so pages you visit elsewhere cannot post to
+it. Uploads are capped at 50 MB, written to a private temporary file and deleted after the
+check. Responses are not cached and carry a strict Content-Security-Policy; the pages need no
+JavaScript. Trusted lists are loaded once at start and refreshed when older than `--tl-max-age`.
+
+## Reports
+
+The JSON report is the source of truth; the HTML report is rendered from it, so both always
+agree. The HTML is one self-contained file: no scripts, no external resources, semantic
+headings, verdict stated in words with colour only as an accent, and the engine's own report
+behind a disclosure. It states what was checked and what was not, and which trusted-list
+version and time the verdict refers to.
 
 ## Trust data
 
@@ -79,7 +104,11 @@ src/main/java/org/eidasvalidation/
   engine/        engine-neutral request, result and ValidationEngine interface
   engine/dss/    EU DSS implementation
   explain/       maps ETSI indications and qualifications to plain language
-  cli/           command line
+  report/        versioned JSON report model and the HTML renderer
+  service/       loads trust data once, validates documents (shared by CLI and web)
+  net/           guarded fetcher: the only code that opens network connections
+  web/           local web interface (loopback only)
+  cli/           command line: validate (default) and serve
 src/test/java/   generates its own signed PDFs with a throwaway certificate
 corpus/          test corpus manifest (see corpus/README.md)
 docs/            project brief and design notes

@@ -43,9 +43,9 @@ import java.util.Date;
  * Builds throwaway test material: a self-signed certificate, an unsigned PDF, and PAdES-B
  * signed copies. This is the seed of the generated part of the test corpus.
  */
-final class TestPdfSigner {
+public final class TestPdfSigner {
 
-    static final String PAGE_TEXT = "Hello eIDAS validator";
+    public static final String PAGE_TEXT = "Hello eIDAS validator";
     private static final char[] PASSWORD = "test".toCharArray();
 
     private final Path keystore;
@@ -57,7 +57,7 @@ final class TestPdfSigner {
     }
 
     /** Creates a fresh RSA key and self-signed certificate valid from yesterday for one year. */
-    static TestPdfSigner selfSigned(Path dir, String subject) throws Exception {
+    public static TestPdfSigner selfSigned(Path dir, String subject) throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
         KeyPair keyPair = generator.generateKeyPair();
@@ -84,12 +84,12 @@ final class TestPdfSigner {
         return new TestPdfSigner(keystore, new CertificateToken(cert));
     }
 
-    CertificateToken certificate() {
+    public CertificateToken certificate() {
         return certificate;
     }
 
     /** Writes a one-page PDF with an uncompressed content stream so tests can tamper with the text. */
-    static Path createPdf(Path target) throws IOException {
+    public static Path createPdf(Path target) throws IOException {
         try (PDDocument pdf = new PDDocument()) {
             PDPage page = new PDPage();
             pdf.addPage(page);
@@ -107,7 +107,7 @@ final class TestPdfSigner {
     }
 
     /** Signs {@code source} with a PAdES-BASELINE-B signature and writes it to {@code target}. */
-    Path signBaselineB(Path source, Path target) throws IOException {
+    public Path signBaselineB(Path source, Path target) throws IOException {
         try (Pkcs12SignatureToken token = new Pkcs12SignatureToken(
                 keystore.toFile(), new KeyStore.PasswordProtection(PASSWORD))) {
             DSSPrivateKeyEntry key = token.getKeys().get(0);
@@ -130,7 +130,7 @@ final class TestPdfSigner {
     }
 
     /** Copies a signed PDF and flips the page text inside the signed byte range. */
-    static Path tamper(Path signed, Path target) throws IOException {
+    public static Path tamper(Path signed, Path target) throws IOException {
         byte[] bytes = Files.readAllBytes(signed);
         byte[] needle = PAGE_TEXT.getBytes(StandardCharsets.ISO_8859_1);
         int at = indexOf(bytes, needle);
