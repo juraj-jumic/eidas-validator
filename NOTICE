@@ -1,0 +1,17 @@
+eIDAS signature validator
+Copyright (c) 2026 Juraj Jumic
+Licensed under the MIT License (see LICENSE).
+
+This project depends on, and distributes unmodified, the EU Digital Signature
+Service (DSS), Copyright European Commission, licensed under the GNU Lesser
+General Public License version 2.1 (LGPL-2.1).
+Source: https://github.com/esig/dss
+
+DSS is used as a replaceable library through its public API. No DSS source code
+is included or modified in this repository. Binary distributions of this project
+ship the DSS jars alongside this notice and the LGPL-2.1 text, so recipients can
+replace them with their own builds of DSS as the LGPL requires.
+
+Licences of all other third-party dependencies (Apache PDFBox, Bouncy Castle,
+Jackson, picocli, SLF4J, Jakarta XML Binding, ...) are to be listed here before
+the first release. TODO: generate the full list with the Maven licence plugin.
