@@ -1,0 +1,28 @@
+# Self-hosted web interface.
+#
+#   docker compose up -d
+#   open http://127.0.0.1:8765/
+#
+# The trusted-list cache lives in a named volume so restarts do not re-download the lists.
+# The port is published on 127.0.0.1 only; to serve other machines put a reverse proxy with
+# authentication in front and add its host name with --allow-host.
+
+services:
+  eidas-validator:
+    build: .
+    image: eidas-validator:local
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - tl-cache:/data/tl-cache
+    tmpfs:
+      - /tmp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    # Example for a reverse-proxied deployment:
+    # command: ["serve", "--bind", "0.0.0.0", "--port", "8765", "--cache-dir", "/data/tl-cache", "--allow-host", "validator.example.org", "--lang", "de"]
+
+volumes:
+  tl-cache:

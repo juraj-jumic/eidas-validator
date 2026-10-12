@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -81,3 +82,65 @@ jobs:
         run: mvn -B --no-transfer-progress -DskipTests package
       - name: Corpus (full)
         run: java -jar target/eidas-validator.jar corpus corpus/manifest.json --mode full --cache-dir target/tl-cache
+
+  # Container image: build it, then exercise the CLI and the web interface inside it without
+  # trusted lists, so the check is deterministic. Published to GHCR only for version tags.
+  image:
+    name: Container image
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: eidas-validator:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: CLI inside the container
+        run: |
+          set -u
+          docker run --rm -v "$PWD/corpus:/corpus:ro" eidas-validator:ci \
+            /corpus/generated/signed-b.pdf --no-trusted-lists --trust /corpus/generated/test-signer.pem --at 2026-10-11T12:00:00Z
+          got=0
+          docker run --rm -v "$PWD/corpus:/corpus:ro" eidas-validator:ci \
+            /corpus/generated/signed-b-tampered.pdf --no-trusted-lists --trust /corpus/generated/test-signer.pem >/dev/null || got=$?
+          [ "$got" -eq 1 ] || { echo "tampered file should exit 1, got $got"; exit 1; }
+          docker run --rm -v "$PWD/corpus:/corpus:ro" eidas-validator:ci corpus /corpus/manifest.json --mode no-trusted-lists
+      - name: Web interface inside the container
+        run: |
+          set -u
+          docker run -d --name validator -p 127.0.0.1:8765:8765 eidas-validator:ci \
+            serve --bind 0.0.0.0 --port 8765 --no-trusted-lists
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8765/healthz >/dev/null 2>&1 && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8765/healthz
+          echo
+          curl -fsS -o /tmp/report.html -F document=@corpus/public/at-bgbl-I-1-2026-amtssignatur.pdf http://127.0.0.1:8765/validate
+          grep -q 'NO_CERTIFICATE_CHAIN_FOUND' /tmp/report.html && echo "report rendered"
+          # The container's own healthcheck must agree.
+          docker inspect --format '{{.State.Health.Status}}' validator
+          docker logs validator | tail -5
+          docker rm -f validator
+      - name: Log in to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha

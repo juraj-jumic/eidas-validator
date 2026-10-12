@@ -33,11 +33,13 @@ import java.util.concurrent.TimeUnit;
  * Local web interface: an upload form and the HTML (or JSON) report, served on the loopback
  * interface only.
  *
- * <p>Defences for a single-user local tool: bound to 127.0.0.1; the Host header must name the
- * loopback host (blocks DNS-rebinding pages that reach a local port through a public name); a
- * present Origin header must match (blocks cross-site form posts from other pages); uploads are
- * capped in size, written to a private temporary file and deleted after the check; responses
- * carry a strict Content-Security-Policy and are never cached.
+ * <p>Defences for a single-user local tool: bound to 127.0.0.1 by default; the Host header must
+ * name the loopback host or an explicitly allowed name (blocks DNS-rebinding pages that reach a
+ * local port through a public name); a present Origin header must match the same names (blocks
+ * cross-site form posts from other pages); uploads are capped in size, written to a private
+ * temporary file and deleted after the check; responses carry a strict Content-Security-Policy
+ * and are never cached. There is no authentication: when bound to a non-loopback address, as in
+ * a container, expose it only through a loopback port mapping or an authenticating proxy.
  *
  * <p>Pages are served in the language the browser asks for via {@code Accept-Language} when it
  * is supported, otherwise in the server's default language.
@@ -52,6 +54,9 @@ public final class LocalServer implements AutoCloseable {
     private final ExecutorService executor;
     private final ValidatorOptions options;
     private final Messages defaultMessages;
+    private final InetAddress bind;
+    /** Host names (lower-case, without port) accepted in Host and Origin besides the loopback names. */
+    private final Set<String> allowedHosts;
     private final Object serviceLock = new Object();
     private ValidationService service;
 
@@ -59,18 +64,45 @@ public final class LocalServer implements AutoCloseable {
         this(options, port, Messages.english());
     }
 
+    /** Loopback only, no extra host names. */
+    public LocalServer(ValidatorOptions options, int port, Messages defaultMessages) throws IOException {
+        this(options, InetAddress.getLoopbackAddress(), port, Set.of(), defaultMessages);
+    }
+
     /**
      * @param options         trust configuration; the trusted lists are loaded on {@link #start()}
-     * @param port            TCP port on 127.0.0.1, or 0 for an ephemeral one
+     * @param bind            address to listen on; loopback for local use, {@code 0.0.0.0} inside a container
+     * @param port            TCP port, or 0 for an ephemeral one
+     * @param allowedHosts    host names (optionally with {@code :port}) accepted in Host and Origin
+     *                        in addition to the loopback names, e.g. a reverse proxy's name
      * @param defaultMessages language used when the browser does not ask for a supported one
      */
-    public LocalServer(ValidatorOptions options, int port, Messages defaultMessages) throws IOException {
+    public LocalServer(ValidatorOptions options, InetAddress bind, int port, Set<String> allowedHosts,
+                       Messages defaultMessages) throws IOException {
         this.options = options;
         this.defaultMessages = defaultMessages;
-        this.server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 16);
+        this.bind = bind;
+        this.allowedHosts = allowedHosts.stream().map(LocalServer::hostOnly).collect(java.util.stream.Collectors.toSet());
+        this.server = HttpServer.create(new InetSocketAddress(bind, port), 16);
         this.executor = Executors.newFixedThreadPool(4);
         server.setExecutor(executor);
         server.createContext("/", this::handle);
+    }
+
+    /** Lower-cases a host[:port] value and strips the port; IPv6 literals keep their brackets. */
+    private static String hostOnly(String hostHeader) {
+        String h = hostHeader.trim().toLowerCase(Locale.ROOT);
+        int colon = h.lastIndexOf(':');
+        if (colon > 0 && !h.endsWith("]") && h.indexOf(':') == colon) {
+            h = h.substring(0, colon);
+        } else if (h.startsWith("[") && h.contains("]:")) {
+            h = h.substring(0, h.indexOf("]:") + 1);
+        }
+        return h;
+    }
+
+    private boolean hostAllowed(String host) {
+        return LOOPBACK_HOSTS.contains(host) || allowedHosts.contains(host);
     }
 
     /** Loads trust data, then starts accepting connections. */
@@ -87,7 +119,9 @@ public final class LocalServer implements AutoCloseable {
     }
 
     public String url() {
-        return "http://127.0.0.1:" + port() + "/";
+        String host = bind.isAnyLocalAddress() || bind.isLoopbackAddress() ? "127.0.0.1"
+                : bind instanceof java.net.Inet6Address ? "[" + bind.getHostAddress() + "]" : bind.getHostAddress();
+        return "http://" + host + ":" + port() + "/";
     }
 
     @Override
@@ -208,15 +242,7 @@ public final class LocalServer implements AutoCloseable {
 
     private boolean loopbackHost(HttpExchange ex) {
         String host = ex.getRequestHeaders().getFirst("Host");
-        if (host == null) {
-            return false;
-        }
-        String h = host.toLowerCase(Locale.ROOT);
-        int colon = h.lastIndexOf(':');
-        if (colon > 0 && !h.endsWith("]")) {
-            h = h.substring(0, colon);
-        }
-        return LOOPBACK_HOSTS.contains(h);
+        return host != null && hostAllowed(hostOnly(host));
     }
 
     private boolean sameOrigin(HttpExchange ex) {
@@ -230,8 +256,12 @@ public final class LocalServer implements AutoCloseable {
             if (host.equals("::1")) {
                 host = "[::1]";
             }
-            return "http".equals(o.getScheme()) && LOOPBACK_HOSTS.contains(host)
-                    && (o.getPort() == port() || o.getPort() == -1 && port() == 80);
+            boolean loopback = LOOPBACK_HOSTS.contains(host);
+            if (loopback) {
+                return "http".equals(o.getScheme()) && (o.getPort() == port() || o.getPort() == -1 && port() == 80);
+            }
+            // A reverse proxy may terminate TLS and use its own port; the name is what we check.
+            return ("http".equals(o.getScheme()) || "https".equals(o.getScheme())) && allowedHosts.contains(host);
         } catch (Exception e) {
             return false;
         }

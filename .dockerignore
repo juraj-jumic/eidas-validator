@@ -1,0 +1,13 @@
+target/
+.git/
+.github/
+.idea/
+*.iml
+.vscode/
+docs/
+corpus/
+*.md
+!NOTICE
+.gitattributes
+.gitignore
+docker-compose.yml

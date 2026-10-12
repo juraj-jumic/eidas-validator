@@ -109,6 +109,26 @@ outcome with the recorded expectation; `--mode full` uses the live trusted lists
 revocation data, `offline` the local cache. The deterministic mode runs on every build and in
 CI; the full mode runs in CI on pushes to `main`. See [corpus/README.md](corpus/README.md).
 
+## Container
+
+```bash
+docker compose up -d
+```
+
+Builds the image and serves the web interface on http://127.0.0.1:8765/ with the trusted-list
+cache in a named volume, a read-only root filesystem and a non-root user. The CLI works through
+the same image:
+
+```bash
+docker run --rm -v "$PWD:/work:ro" eidas-validator:local /work/signed.pdf --no-trusted-lists
+```
+
+Inside the container the server binds to `0.0.0.0` (`serve --bind`), so reachability is decided
+by the port mapping. The interface has no authentication: keep the mapping on `127.0.0.1`, or put
+an authenticating reverse proxy in front and pass its name with `--allow-host`, which extends the
+Host and Origin checks to that name. Images for version tags are published to
+`ghcr.io/juraj-jumic/eidas-validator`; CI builds and smoke-tests the image on every push.
+
 ## Reports
 
 The JSON report is the source of truth; the HTML report is rendered from it, so both always

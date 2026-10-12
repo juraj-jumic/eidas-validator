@@ -169,6 +169,41 @@ class LocalServerTest {
     }
 
     @Test
+    void allowedHostNamesPassHostAndOriginChecks() throws Exception {
+        try (LocalServer proxied = new LocalServer(ValidatorOptions.anchorsOnly(List.of()),
+                java.net.InetAddress.getLoopbackAddress(), 0, java.util.Set.of("Validator.Example:443"),
+                org.eidasvalidation.i18n.Messages.english())) {
+            proxied.start();
+            try (var socket = new java.net.Socket("127.0.0.1", proxied.port())) {
+                socket.getOutputStream().write(("GET /healthz HTTP/1.1\r\nHost: validator.example\r\nConnection: close\r\n\r\n")
+                        .getBytes(StandardCharsets.US_ASCII));
+                String response = new String(socket.getInputStream().readAllBytes(), StandardCharsets.US_ASCII);
+                assertTrue(response.startsWith("HTTP/1.1 200"), response);
+            }
+            try (var socket = new java.net.Socket("127.0.0.1", proxied.port())) {
+                socket.getOutputStream().write(("GET /healthz HTTP/1.1\r\nHost: other.example\r\nConnection: close\r\n\r\n")
+                        .getBytes(StandardCharsets.US_ASCII));
+                String response = new String(socket.getInputStream().readAllBytes(), StandardCharsets.US_ASCII);
+                assertTrue(response.startsWith("HTTP/1.1 403"), response);
+            }
+            // Origin from the proxied name, over https, is accepted for the upload.
+            String boundary = "----eidasProxy";
+            byte[] body = ("--" + boundary + "\r\nContent-Disposition: form-data; name=\"document\"; filename=\"u.pdf\"\r\n"
+                    + "Content-Type: application/pdf\r\n\r\n").getBytes(StandardCharsets.ISO_8859_1);
+            ByteArrayOutputStream b = new ByteArrayOutputStream();
+            b.write(body);
+            b.write(unsignedPdf);
+            b.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.ISO_8859_1));
+            HttpResponse<String> r = http.send(HttpRequest.newBuilder(URI.create(proxied.url() + "validate"))
+                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .header("Origin", "https://validator.example")
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(b.toByteArray())).build(),
+                    HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, r.statusCode(), r.body());
+        }
+    }
+
+    @Test
     void unknownPathIs404() throws Exception {
         HttpResponse<String> r = http.send(HttpRequest.newBuilder(URI.create(server.url() + "nope")).GET().build(),
                 HttpResponse.BodyHandlers.ofString());
