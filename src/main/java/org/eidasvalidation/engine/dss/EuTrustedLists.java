@@ -36,8 +36,8 @@ import java.util.Objects;
  * through DSS's {@link TLValidationJob}, with an on-disk cache so later runs work offline.
  *
  * <p>The LOTL's own signature is verified against the certificates the European Commission
- * published in the Official Journal; those ship with the tool as {@code lotl-signers.pem} and
- * can be overridden. Lists whose signature does not verify are rejected; expired lists are
+ * published in the Official Journal (notice C/2026/1944); those ship with the tool as
+ * {@code lotl-signers.pem} and can be overridden. Lists whose signature does not verify are rejected; expired lists are
  * accepted but reported.
  */
 public final class EuTrustedLists {
@@ -46,9 +46,12 @@ public final class EuTrustedLists {
 
     /** Official LOTL location, as published by the Commission. */
     public static final String LOTL_URL = "https://ec.europa.eu/tools/lotl/eu-lotl.xml";
-    /** Official Journal notice announcing the LOTL signing certificates. */
-    public static final String OJ_URL =
-            "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=uriserv:OJ.C_.2019.276.01.0001.01.ENG";
+    /**
+     * Official Journal notice announcing the LOTL signing certificates: C/2026/1944 of 15 April 2026,
+     * which replaced OJ C 276 of 2019. DSS matches this URL by host against the LOTL's scheme
+     * information URIs to tell archived pivot LOTLs from the notice.
+     */
+    public static final String OJ_URL = "https://eur-lex.europa.eu/eli/C/2026/1944/oj";
     private static final String BUNDLED_SIGNERS = "/lotl-signers.pem";
 
     private final Path cacheDirectory;

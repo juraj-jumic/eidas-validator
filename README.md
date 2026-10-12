@@ -152,11 +152,12 @@ The first run downloads the LOTL from `https://ec.europa.eu/tools/lotl/eu-lotl.x
 national trusted lists (a few megabytes, roughly a minute). They are cached on disk, so later
 runs are fast and `--offline` works from the cache.
 
-The LOTL's own signature is verified against the certificates the European Commission announced
-in the Official Journal; a copy ships in the jar as `lotl-signers.pem` (see
-`src/main/resources/lotl-signers.pem` for its provenance). A list whose signature does not
-verify is rejected; an expired list is used but flagged in the report. Only trusted-list and
-revocation data ever cross the network; the document stays on your machine.
+The LOTL's own signature is verified against the six certificates the European Commission
+announced in the Official Journal, notice C/2026/1944 of 15 April 2026. A copy ships in the jar
+as `lotl-signers.pem`, and a test checks its SHA-256 fingerprints against the digests printed in
+that notice (see `src/main/resources/lotl-signers.pem` for the provenance). A list whose
+signature does not verify is rejected; an expired list is used but flagged in the report. Only
+trusted-list and revocation data ever cross the network; the document stays on your machine.
 
 The online trusted-list test is opt-in: `EIDAS_TL_ONLINE=true mvn test`.
 

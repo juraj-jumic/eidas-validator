@@ -24,7 +24,7 @@ The goal is a free, self-hostable tool that tells ordinary people, in plain lang
 | Engine: EU DSS (Java) | Decided 11 Oct 2026 | Java stack preferred; DSS 6.5 is the reference eIDAS engine. pyHanko (MIT) was the alternative and is kept in mind only as a cross-check engine |
 | Contribute upstream vs. separate project | Open | Decide after evaluating the EUDI reference signing components |
 | Repository: github.com/juraj-jumic/eidas-validator, public | Decided 11 Oct 2026 | CI on JDK 17 and 21 |
-| LOTL signing certificates: bundled copy taken from the DSS demo keystore | Provisional | Fingerprints recorded in `src/main/resources/lotl-signers.pem`; **To verify** against OJ C/2026/1944 (the LOTL now announces that notice) before the first release |
+| LOTL signing certificates: bundled copy, checked against OJ C/2026/1944 | Verified 12 Oct 2026 | SHA-256 and SHA-1 of all six certificates match the notice of 15 April 2026; `LotlSignersTest` pins the digests; replace the file when a new notice appears |
 
 License caution (not legal advice): DSS is LGPL 2.1, so an MIT project can depend on it as an unmodified, replaceable library, but must pass on the LGPL notices, and any changes to DSS itself must be shared under the LGPL. A pyHanko-based engine may keep the whole stack permissive. **To verify**: pyHanko's license and every transitive dependency's license before the first release.
 
