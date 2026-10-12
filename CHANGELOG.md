@@ -5,7 +5,7 @@ Notable changes to this project are recorded here. The format follows
 versioning. Each version has a GitHub release with `eidas-validator-<version>.zip` (the jar
 and its libraries) and a container image `ghcr.io/juraj-jumic/eidas-validator:<version>`.
 
-## [Unreleased]
+## [0.2.0] - 2026-10-12
 
 ### Fixed
 
@@ -19,6 +19,11 @@ and its libraries) and a container image `ghcr.io/juraj-jumic/eidas-validator:<v
 - Two real qualified samples in the public corpus: the German Federal Law Gazette 2026 I Nr. 1
   (qualified electronic seal, PAdES-BASELINE-LT) and the Polish Journal of Laws 2025 poz. 1
   (qualified electronic signature).
+
+### Changed
+
+- The README leads with the release zip and `java -jar`; building from source and the
+  container image are documented at the end, the container marked optional.
 
 ## [0.1.0] - 2026-10-12
 
@@ -62,4 +67,5 @@ First release.
 - The Croatian wording awaits native proofreading.
 - This is an informational tool, not a qualified validation service in the sense of eIDAS.
 
+[0.2.0]: https://github.com/juraj-jumic/eidas-validator/releases/tag/v0.2.0
 [0.1.0]: https://github.com/juraj-jumic/eidas-validator/releases/tag/v0.1.0
