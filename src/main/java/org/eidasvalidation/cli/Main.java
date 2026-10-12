@@ -18,8 +18,6 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-import java.io.FileDescriptor;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -84,10 +82,9 @@ public final class Main implements Callable<Integer> {
     CommandLine.Model.CommandSpec spec;
 
     public static void main(String[] args) {
-        // JDK 17 encodes System.out in the platform code page; explanations carry accents in
-        // several languages, and modern terminals expect UTF-8.
-        System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
-        System.setErr(new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8));
+        // Console code page when attached to a console, UTF-8 when piped; see ConsoleOutput.
+        System.setOut(ConsoleOutput.stdout());
+        System.setErr(ConsoleOutput.stderr());
         System.exit(new CommandLine(new Main()).execute(args));
     }
 

@@ -11,3 +11,7 @@ target/
 
 # Real-world documents that may not be redistributed stay out of the public repo
 corpus/private/
+
+# local reports written next to the project are never committed
+/*.html
+/*.json
