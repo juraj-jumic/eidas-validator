@@ -160,6 +160,17 @@ the vetted address so a DNS rebinding cannot bypass the check, vets redirect tar
 way (max 3), and enforces connect/read/total timeouts and a byte limit (4 MB for revocation data,
 32 MB for trusted lists). Nothing is fetched at all without `--online` or the trusted-list refresh.
 
+**Parsing in a sandbox.** A PDF parser is a large attack surface, and a hostile file can make
+it hang, exhaust memory or crash. The web interface therefore parses documents in a
+supervised worker JVM (`org.eidasvalidation.sandbox`): the worker loads trust data once and
+handles one document at a time under a heap cap (`--sandbox-memory`, default 1 GB),
+`ExitOnOutOfMemoryError`, its own temporary directory and a wall-clock limit per document
+(`--sandbox-timeout`, default 60 s). A worker that overruns is killed, a worker that dies is
+reported, and the next request gets a fresh one; the server itself never goes down, and the
+reader sees "this file could not be checked safely" with the reason. `serve --no-sandbox`
+turns this off; the CLI opts in with `--sandbox`. The container adds the operating-system
+layer on top: non-root, read-only root filesystem, no new privileges.
+
 **TLS to the list servers.** National lists are served from hosts whose roots (HARICA, FNMT-RCM,
 Certum, Microsec, GlobalSign R46, ...) are missing from older JDK `cacerts` files; an original
 JDK 17 GA build fails on several of them with "PKIX path building failed". Use a current JDK

@@ -24,7 +24,7 @@ import java.util.Objects;
  * Loads trust data once and validates documents against it. The CLI uses one instance per run;
  * the local web server keeps one and recreates it when the trusted lists are due for refresh.
  */
-public final class ValidationService {
+public final class ValidationService implements Validator {
 
     private final ValidatorOptions options;
     private final List<CertificateSource> sources;
@@ -78,11 +78,13 @@ public final class ValidationService {
         return options;
     }
 
+    @Override
     public TrustSummary trust() {
         return trust;
     }
 
     /** True when the trusted lists loaded by this instance are older than the configured maximum age. */
+    @Override
     public boolean isStale() {
         return options.trustedLists() && !options.offline()
                 && Instant.now().isAfter(createdAt.plus(options.tlMaxAge()));
@@ -101,6 +103,7 @@ public final class ValidationService {
      * @param messages    language of the explanations
      * @throws ValidationException if the document cannot be parsed at all
      */
+    @Override
     public Report validate(Path document, String displayName, Instant at, boolean online, Messages messages) {
         boolean allowNetwork = online && !options.offline();
         ValidationEngine engine = new DssValidationEngine(sources, trust, allowNetwork);

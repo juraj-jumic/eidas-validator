@@ -7,7 +7,9 @@ import org.eidasvalidation.i18n.Messages;
 import org.eidasvalidation.report.HtmlReport;
 import org.eidasvalidation.report.Report;
 import org.eidasvalidation.report.ReportJson;
+import org.eidasvalidation.sandbox.SandboxException;
 import org.eidasvalidation.service.ValidationService;
+import org.eidasvalidation.service.Validator;
 import org.eidasvalidation.service.ValidatorOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,8 +59,15 @@ public final class LocalServer implements AutoCloseable {
     private final InetAddress bind;
     /** Host names (lower-case, without port) accepted in Host and Origin besides the loopback names. */
     private final Set<String> allowedHosts;
+    private final ValidatorFactory factory;
     private final Object serviceLock = new Object();
-    private ValidationService service;
+    private Validator validator;
+
+    /** Creates the validator the server uses; called at start and whenever trust data is stale. */
+    @FunctionalInterface
+    public interface ValidatorFactory {
+        Validator create() throws IOException;
+    }
 
     public LocalServer(ValidatorOptions options, int port) throws IOException {
         this(options, port, Messages.english());
@@ -79,8 +88,18 @@ public final class LocalServer implements AutoCloseable {
      */
     public LocalServer(ValidatorOptions options, InetAddress bind, int port, Set<String> allowedHosts,
                        Messages defaultMessages) throws IOException {
+        this(options, bind, port, allowedHosts, defaultMessages, () -> ValidationService.create(options));
+    }
+
+    /**
+     * @param factory how to create the validator: in-process ({@link ValidationService}) or a
+     *                supervised worker ({@link org.eidasvalidation.sandbox.SandboxedValidator})
+     */
+    public LocalServer(ValidatorOptions options, InetAddress bind, int port, Set<String> allowedHosts,
+                       Messages defaultMessages, ValidatorFactory factory) throws IOException {
         this.options = options;
         this.defaultMessages = defaultMessages;
+        this.factory = factory;
         this.bind = bind;
         this.allowedHosts = allowedHosts.stream().map(LocalServer::hostOnly).collect(java.util.stream.Collectors.toSet());
         this.server = HttpServer.create(new InetSocketAddress(bind, port), 16);
@@ -108,7 +127,7 @@ public final class LocalServer implements AutoCloseable {
     /** Loads trust data, then starts accepting connections. */
     public void start() throws IOException {
         synchronized (serviceLock) {
-            service = ValidationService.create(options);
+            validator = factory.create();
         }
         server.start();
         LOG.info("Listening on {}", url());
@@ -127,6 +146,11 @@ public final class LocalServer implements AutoCloseable {
     @Override
     public void close() {
         server.stop(0);
+        synchronized (serviceLock) {
+            if (validator != null) {
+                validator.close();
+            }
+        }
         executor.shutdownNow();
         try {
             executor.awaitTermination(5, TimeUnit.SECONDS);
@@ -135,13 +159,15 @@ public final class LocalServer implements AutoCloseable {
         }
     }
 
-    private ValidationService service() throws IOException {
+    private Validator validator() throws IOException {
         synchronized (serviceLock) {
-            if (service.isStale()) {
+            if (validator.isStale()) {
                 LOG.info("Trusted lists older than {}; refreshing", options.tlMaxAge());
-                service = ValidationService.create(options);
+                Validator fresh = factory.create();
+                validator.close();
+                validator = fresh;
             }
-            return service;
+            return validator;
         }
     }
 
@@ -223,12 +249,15 @@ public final class LocalServer implements AutoCloseable {
         Path tmp = dir.resolve("document.pdf");
         try {
             Files.write(tmp, file.data());
-            Report report = service().validate(tmp, displayName, Instant.now(), online, m);
+            Report report = validator().validate(tmp, displayName, Instant.now(), online, m);
             if (json) {
                 send(ex, 200, "application/json; charset=utf-8", ReportJson.write(report).getBytes(StandardCharsets.UTF_8));
             } else {
                 send(ex, 200, "text/html; charset=utf-8", HtmlReport.render(report).getBytes(StandardCharsets.UTF_8));
             }
+        } catch (SandboxException e) {
+            send(ex, 422, "text/html; charset=utf-8", errorPage(m, m.get("web.error.sandbox.h"),
+                    m.format("web.error.sandbox.p", e.getMessage())).getBytes(StandardCharsets.UTF_8));
         } catch (ValidationException e) {
             send(ex, 422, "text/html; charset=utf-8", errorPage(m, m.get("web.error.unreadable.h"),
                     m.format("web.error.unreadable.p", e.getMessage())).getBytes(StandardCharsets.UTF_8));
@@ -304,7 +333,7 @@ public final class LocalServer implements AutoCloseable {
     private String formPage(Messages m) {
         String trust;
         synchronized (serviceLock) {
-            trust = service.trust().describe(m);
+            trust = validator.trust().describe(m);
         }
         boolean offline = options.offline();
         return """

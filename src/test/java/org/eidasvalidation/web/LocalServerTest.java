@@ -204,6 +204,39 @@ class LocalServerTest {
     }
 
     @Test
+    void sandboxedServerSurvivesAHangingParser() throws Exception {
+        var settings = org.eidasvalidation.sandbox.SandboxedValidator.Settings.defaults()
+                .withJobTimeout(java.time.Duration.ofSeconds(3)).withMaxHeapMb(256)
+                .withExtraJvmArgs(List.of("-Deidas.worker.hangOn=hang.pdf"));
+        var options = ValidatorOptions.anchorsOnly(List.of());
+        try (LocalServer sandboxed = new LocalServer(options, java.net.InetAddress.getLoopbackAddress(), 0,
+                java.util.Set.of(), org.eidasvalidation.i18n.Messages.english(),
+                () -> org.eidasvalidation.sandbox.SandboxedValidator.start(options, settings))) {
+            sandboxed.start();
+            HttpResponse<String> hung = postTo(sandboxed, signedPdf, "hang.pdf");
+            assertEquals(422, hung.statusCode(), hung.body());
+            assertTrue(hung.body().contains("could not be checked safely"), hung.body());
+
+            HttpResponse<String> next = postTo(sandboxed, signedPdf, "fine.pdf");
+            assertEquals(200, next.statusCode(), next.body());
+            assertTrue(next.body().contains("NO_CERTIFICATE_CHAIN_FOUND"));
+        }
+    }
+
+    private static HttpResponse<String> postTo(LocalServer target, byte[] file, String filename) throws IOException, InterruptedException {
+        String boundary = "----eidasSandbox" + System.nanoTime();
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        body.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"document\"; filename=\"" + filename
+                + "\"\r\nContent-Type: application/pdf\r\n\r\n").getBytes(StandardCharsets.ISO_8859_1));
+        body.write(file);
+        body.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.ISO_8859_1));
+        return http.send(HttpRequest.newBuilder(URI.create(target.url() + "validate"))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())).build(),
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    @Test
     void unknownPathIs404() throws Exception {
         HttpResponse<String> r = http.send(HttpRequest.newBuilder(URI.create(server.url() + "nope")).GET().build(),
                 HttpResponse.BodyHandlers.ofString());

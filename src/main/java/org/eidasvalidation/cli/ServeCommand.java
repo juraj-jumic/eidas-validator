@@ -1,7 +1,12 @@
 package org.eidasvalidation.cli;
 
 import org.eidasvalidation.i18n.Messages;
+import org.eidasvalidation.sandbox.SandboxedValidator;
+import org.eidasvalidation.service.ValidationService;
+import org.eidasvalidation.service.ValidatorOptions;
 import org.eidasvalidation.web.LocalServer;
+
+import java.time.Duration;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -38,6 +43,18 @@ public final class ServeCommand implements Callable<Integer> {
             + "a browser's Accept-Language header takes precedence when it names a supported language.")
     String lang;
 
+    @Option(names = "--no-sandbox", description = "Parse documents in this process instead of a supervised worker "
+            + "JVM (faster start, no isolation from hostile files).")
+    boolean noSandbox;
+
+    @Option(names = "--sandbox-timeout", paramLabel = "<seconds>", defaultValue = "60",
+            description = "Wall-clock limit per document in the worker (default: 60).")
+    long sandboxTimeout;
+
+    @Option(names = "--sandbox-memory", paramLabel = "<MB>", defaultValue = "1024",
+            description = "Heap cap of the worker JVM in megabytes (default: 1024).")
+    int sandboxMemory;
+
     @Mixin
     TrustOptions trust;
 
@@ -50,15 +67,22 @@ public final class ServeCommand implements Callable<Integer> {
             System.err.println("Cannot resolve --bind address: " + bind);
             return Main.EXIT_ERROR;
         }
+        ValidatorOptions options = trust.toOptions();
+        LocalServer.ValidatorFactory factory = noSandbox
+                ? () -> ValidationService.create(options)
+                : () -> SandboxedValidator.start(options, SandboxedValidator.Settings.defaults()
+                        .withJobTimeout(Duration.ofSeconds(sandboxTimeout)).withMaxHeapMb(sandboxMemory));
         LocalServer server;
         try {
-            server = new LocalServer(trust.toOptions(), address, port, Set.copyOf(allowHosts), Messages.forTag(lang));
+            server = new LocalServer(options, address, port, Set.copyOf(allowHosts), Messages.forTag(lang), factory);
             server.start();
         } catch (IOException | RuntimeException e) {
             System.err.println("Cannot start the web interface: " + e.getMessage());
             return Main.EXIT_ERROR;
         }
         System.out.println("eidas-validator web interface: " + server.url());
+        System.out.println(noSandbox ? "Documents are parsed in this process (--no-sandbox)."
+                : "Documents are parsed in a supervised worker JVM (" + sandboxMemory + " MB, " + sandboxTimeout + " s per document).");
         if (address.isLoopbackAddress()) {
             System.out.println("Bound to the loopback interface only. Press Ctrl+C to stop.");
         } else {

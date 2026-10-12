@@ -8,7 +8,10 @@ import org.eidasvalidation.report.HtmlReport;
 import org.eidasvalidation.report.Report;
 import org.eidasvalidation.report.ReportJson;
 import org.eidasvalidation.report.SignatureReport;
+import org.eidasvalidation.sandbox.SandboxException;
+import org.eidasvalidation.sandbox.SandboxedValidator;
 import org.eidasvalidation.service.ValidationService;
+import org.eidasvalidation.service.Validator;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -56,9 +59,13 @@ public final class Main implements Callable<Integer> {
             + "certificate chain (default: off).")
     boolean online;
 
-    @Option(names = "--lang", paramLabel = "<tag>", description = "Language of the explanations, e.g. en or de "
+    @Option(names = "--lang", paramLabel = "<tag>", description = "Language of the explanations, e.g. en, de or hr "
             + "(default: en; unknown languages fall back to English).")
     String lang;
+
+    @Option(names = "--sandbox", description = "Parse the document in a supervised worker JVM with a memory cap and "
+            + "a time limit, as the web interface does (default: in this process).")
+    boolean sandbox;
 
     @Mixin
     TrustOptions trust;
@@ -100,21 +107,21 @@ public final class Main implements Callable<Integer> {
         }
         Messages messages = Messages.forTag(lang);
 
-        ValidationService service;
-        try {
-            service = ValidationService.create(trust.toOptions());
+        Report report;
+        try (Validator validator = sandbox
+                ? SandboxedValidator.start(trust.toOptions(), SandboxedValidator.Settings.defaults())
+                : ValidationService.create(trust.toOptions())) {
+            report = validator.validate(document, document.getFileName().toString(),
+                    validationTime == null ? Instant.now() : validationTime, online, messages);
+        } catch (SandboxException e) {
+            System.err.println("The document could not be checked safely: " + e.getMessage());
+            return EXIT_ERROR;
+        } catch (ValidationException e) {
+            System.err.println(e.getMessage());
+            return EXIT_ERROR;
         } catch (IOException | RuntimeException e) {
             System.err.println("Cannot load trust data: " + e.getMessage());
             System.err.println("Use --no-trusted-lists to validate integrity only.");
-            return EXIT_ERROR;
-        }
-
-        Report report;
-        try {
-            report = service.validate(document, document.getFileName().toString(),
-                    validationTime == null ? Instant.now() : validationTime, online, messages);
-        } catch (ValidationException e) {
-            System.err.println(e.getMessage());
             return EXIT_ERROR;
         }
 
