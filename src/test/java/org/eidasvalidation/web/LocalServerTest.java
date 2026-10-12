@@ -242,4 +242,86 @@ class LocalServerTest {
                 HttpResponse.BodyHandlers.ofString());
         assertEquals(404, r.statusCode());
     }
+
+    // ---- the 50 MB upload cap -------------------------------------------------------------------
+
+    @Test
+    void declaredOversizeUploadIsRefusedBeforeTheBodyIsSent() throws Exception {
+        // A client that announces more than the cap gets 413 at once; the body is never read.
+        try (var socket = new java.net.Socket("127.0.0.1", server.port())) {
+            socket.setSoTimeout(30_000);
+            socket.getOutputStream().write(("POST /validate HTTP/1.1\r\nHost: 127.0.0.1:" + server.port()
+                    + "\r\nContent-Type: multipart/form-data; boundary=x\r\nContent-Length: "
+                    + (LocalServer.MAX_UPLOAD_BYTES + 1) + "\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+            String response = readResponse(socket);
+            assertTrue(response.startsWith("HTTP/1.1 413"), response);
+            assertTrue(response.contains("Uploads are limited to 50 MB"), response);
+        }
+    }
+
+    @Test
+    void undeclaredOversizeUploadIsCutOffAtTheCap() throws Exception {
+        // Chunked transfer carries no Content-Length, so the cap has to hold while the body is read:
+        // one byte past 50 MB and the server answers 413 without waiting for the rest.
+        try (var socket = new java.net.Socket("127.0.0.1", server.port())) {
+            socket.setSoTimeout(30_000);
+            var out = new java.io.BufferedOutputStream(socket.getOutputStream(), 1 << 16);
+            out.write(("POST /validate HTTP/1.1\r\nHost: 127.0.0.1:" + server.port()
+                    + "\r\nContent-Type: multipart/form-data; boundary=x\r\nTransfer-Encoding: chunked\r\n\r\n")
+                    .getBytes(StandardCharsets.US_ASCII));
+            byte[] block = new byte[64 * 1024];
+            java.util.Arrays.fill(block, (byte) 'x');
+            long remaining = LocalServer.MAX_UPLOAD_BYTES + 1;
+            while (remaining > 0) {
+                int size = (int) Math.min(block.length, remaining);
+                out.write((Integer.toHexString(size) + "\r\n").getBytes(StandardCharsets.US_ASCII));
+                out.write(block, 0, size);
+                out.write("\r\n".getBytes(StandardCharsets.US_ASCII));
+                remaining -= size;
+            }
+            out.flush();
+            // The terminating chunk is deliberately not sent: the server must answer from the cap alone.
+            String response = readResponse(socket);
+            assertTrue(response.startsWith("HTTP/1.1 413"), response);
+            assertTrue(response.contains("Uploads are limited to 50 MB"), response);
+        }
+    }
+
+    @Test
+    void uploadOfExactlyTheCapReachesTheValidator() throws Exception {
+        // Boundary: a body of exactly 50 MB passes the gate. The junk inside is then rejected as
+        // not a PDF, which is 422 from the validator, not 413 from the cap.
+        String boundary = "----eidasCap";
+        byte[] head = ("--" + boundary + "\r\nContent-Disposition: form-data; name=\"document\"; filename=\"big.pdf\"\r\n"
+                + "Content-Type: application/pdf\r\n\r\n").getBytes(StandardCharsets.ISO_8859_1);
+        byte[] tail = ("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.ISO_8859_1);
+        byte[] body = new byte[(int) LocalServer.MAX_UPLOAD_BYTES];
+        System.arraycopy(head, 0, body, 0, head.length);
+        java.util.Arrays.fill(body, head.length, body.length - tail.length, (byte) 'x');
+        System.arraycopy(tail, 0, body, body.length - tail.length, tail.length);
+        HttpResponse<String> r = http.send(HttpRequest.newBuilder(URI.create(server.url() + "validate"))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build(),
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        assertEquals(422, r.statusCode(), r.body());
+        assertTrue(r.body().contains("could not be checked"), r.body());
+    }
+
+    /** Reads one HTTP/1.1 response with a Content-Length body from a raw socket. */
+    private static String readResponse(java.net.Socket socket) throws IOException {
+        var in = socket.getInputStream();
+        ByteArrayOutputStream head = new ByteArrayOutputStream();
+        int c;
+        int crlfs = 0;
+        while (crlfs < 4 && (c = in.read()) >= 0) {
+            head.write(c);
+            crlfs = (c == '\r' && crlfs % 2 == 0) || (c == '\n' && crlfs % 2 == 1) ? crlfs + 1 : 0;
+        }
+        String headers = head.toString(StandardCharsets.ISO_8859_1);
+        int length = headers.lines()
+                .filter(l -> l.regionMatches(true, 0, "Content-Length:", 0, 15))
+                .mapToInt(l -> Integer.parseInt(l.substring(15).trim()))
+                .findFirst().orElse(0);
+        return headers + new String(in.readNBytes(length), StandardCharsets.UTF_8);
+    }
 }
