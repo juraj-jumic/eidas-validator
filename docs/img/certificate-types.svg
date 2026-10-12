@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="t d">
+  <title id="t">What a certificate contains, and the kinds used for signing</title>
+  <desc id="d">Left: the fields inside an X.509 certificate. Right: a matrix of certificate kinds by holder (person or organisation) and assurance (advanced or qualified).</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1e293b; }
+    .h { font-size: 26px; font-weight: 700; }
+    .sub { font-size: 15px; fill: #64748b; }
+    .k { font-size: 12.5px; font-weight: 700; fill: #64748b; letter-spacing: .08em; }
+    .f { font-size: 14px; }
+    .fv { font-size: 13px; fill: #475569; font-family: Consolas, "Courier New", monospace; white-space: pre; }
+    .cell { font-size: 15.5px; font-weight: 700; }
+    .cb { font-size: 13px; fill: #334155; }
+    .ax { font-size: 13px; font-weight: 700; fill: #64748b; letter-spacing: .06em; }
+    .note { font-size: 12.5px; fill: #64748b; }
+  </style>
+  <rect width="1200" height="680" fill="#f8fafc"/>
+  <text x="48" y="54" class="h">Certificates: what they contain and which kind you need</text>
+  <text x="48" y="80" class="sub">A certificate binds a public key to a name and is signed by its issuer. Whether a signature is “qualified” is decided by what the certificate says and who issued it.</text>
+
+  <g transform="translate(48 112)">
+    <text x="0" y="0" class="k">INSIDE AN X.509 CERTIFICATE</text>
+    <rect x="0" y="16" width="440" height="530" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <g transform="translate(20 46)">
+      <text x="0" y="0" class="f">Subject</text><text x="0" y="18" class="fv">CN=Ana Horvat, C=HR</text>
+      <rect x="0" y="30" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="56" class="f">Issuer</text><text x="0" y="74" class="fv">CN=Example Qualified CA, O=Example QTSP</text>
+      <rect x="0" y="86" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="112" class="f">Validity</text><text x="0" y="130" class="fv">2025-03-01 to 2028-03-01</text>
+      <rect x="0" y="142" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="168" class="f">Public key</text><text x="0" y="186" class="fv">RSA 3072 or EC P-256; the private half stays on the device</text>
+      <rect x="0" y="198" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="224" class="f">Key usage</text><text x="0" y="242" class="fv">nonRepudiation (meant for signing, not for TLS)</text>
+      <rect x="0" y="254" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="280" class="f">Certificate policies</text><text x="0" y="298" class="fv">OID of the issuer policy, e.g. QCP-n-qscd</text>
+      <rect x="0" y="310" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="336" class="f">QC statements  <tspan class="note">(ETSI EN 319 412-5)</tspan></text>
+      <text x="0" y="354" class="fv">QcCompliance   "this is a qualified certificate"</text>
+      <text x="0" y="372" class="fv">QcSSCD         "the key is on a qualified device"</text>
+      <text x="0" y="390" class="fv">QcType         esign | eseal | web</text>
+      <rect x="0" y="402" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="428" class="f">Revocation pointers</text><text x="0" y="446" class="fv">CRL distribution point, OCSP responder URL</text>
+      <rect x="0" y="458" width="400" height="1" fill="#f1f5f9"/>
+      <text x="0" y="484" class="f" fill="#2563eb" font-weight="700">Issuer’s signature over all of the above</text>
+    </g>
+  </g>
+
+  <g transform="translate(544 112)">
+    <text x="0" y="0" class="k">WHICH KIND OF CERTIFICATE</text>
+    <text x="152" y="40" class="ax">ADVANCED</text>
+    <text x="152" y="58" class="note">any certificate authority</text>
+    <text x="398" y="40" class="ax">QUALIFIED</text>
+    <text x="398" y="58" class="note">provider listed on the EU trusted lists</text>
+    <text x="0" y="128" class="ax">PERSON</text>
+    <text x="0" y="146" class="note">signature</text>
+    <text x="0" y="300" class="ax">ORGANISATION</text>
+    <text x="0" y="318" class="note">seal</text>
+
+    <g transform="translate(140 76)">
+      <rect width="236" height="150" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5"/>
+      <text x="18" y="34" class="cell" fill="#2563eb">Advanced signature</text>
+      <text x="18" y="60" class="cb">Proves integrity and links the</text>
+      <text x="18" y="78" class="cb">signature to a named key holder.</text>
+      <text x="18" y="104" class="cb">Identity checks and key storage</text>
+      <text x="18" y="122" class="cb">are whatever the issuer decided.</text>
+    </g>
+    <g transform="translate(386 76)">
+      <rect width="236" height="150" rx="10" fill="#f0fdf4" stroke="#15803d" stroke-width="2"/>
+      <text x="18" y="34" class="cell" fill="#15803d">Qualified signature</text>
+      <text x="18" y="60" class="cb">QcCompliance + QcType esign,</text>
+      <text x="18" y="78" class="cb">issued by a QTSP, key on a QSCD</text>
+      <text x="18" y="96" class="cb">(QcSSCD or policy QCP-n-qscd).</text>
+      <text x="18" y="122" class="cb" font-weight="700">= handwritten signature.</text>
+    </g>
+    <g transform="translate(140 248)">
+      <rect width="236" height="150" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5"/>
+      <text x="18" y="34" class="cell" fill="#2563eb">Advanced seal</text>
+      <text x="18" y="60" class="cb">Held by a company, authority or</text>
+      <text x="18" y="78" class="cb">system; proves origin and integrity</text>
+      <text x="18" y="96" class="cb">of invoices, gazettes, exports.</text>
+      <text x="18" y="122" class="cb">No qualification claims.</text>
+    </g>
+    <g transform="translate(386 248)">
+      <rect width="236" height="150" rx="10" fill="#f0fdf4" stroke="#15803d" stroke-width="2"/>
+      <text x="18" y="34" class="cell" fill="#15803d">Qualified seal</text>
+      <text x="18" y="60" class="cb">QcCompliance + QcType eseal,</text>
+      <text x="18" y="78" class="cb">QTSP-issued, key on a QSCD.</text>
+      <text x="18" y="104" class="cb">Presumed integrity and correct</text>
+      <text x="18" y="122" class="cb">origin, EU-wide (Art. 35).</text>
+    </g>
+
+    <g transform="translate(0 428)">
+      <text x="0" y="0" class="k">OTHER CERTIFICATES YOU WILL MEET IN A SIGNED PDF</text>
+      <rect x="0" y="16" width="622" height="84" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="18" y="46" class="cb"><tspan font-weight="700">Timestamping authority (TSA)</tspan>: signs “this hash existed at this time”; qualified TSAs are listed too.</text>
+      <text x="18" y="68" class="cb"><tspan font-weight="700">OCSP responder</tspan>: signs revocation answers.  <tspan font-weight="700">CA and root</tspan>: issue the certificates above, anchor the chain.</text>
+      <text x="18" y="90" class="cb"><tspan font-weight="700">Website (QWAC)</tspan>: QcType web; proves a site’s owner, never used for document signatures.</text>
+    </g>
+  </g>
+</svg>

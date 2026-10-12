@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d">
+  <title id="t">How long a signature stays verifiable, by baseline level</title>
+  <desc id="d">A timeline chart over 25 years. Three events erode verifiability: the signer's certificate expires, the CA stops serving revocation data, and the hash algorithm weakens. Four bars show how far each baseline level (B-B, B-T, B-LT, B-LTA) remains verifiable.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1e293b; }
+    .h { font-size: 26px; font-weight: 700; }
+    .sub { font-size: 15px; fill: #64748b; }
+    .ax { font-size: 12.5px; fill: #64748b; }
+    .ev { font-size: 12.5px; font-weight: 700; fill: #b45309; }
+    .lvl { font-size: 15px; font-weight: 700; }
+    .lb { font-size: 12.5px; fill: #475569; }
+    .bar { font-size: 12.5px; font-weight: 700; fill: #ffffff; }
+    .note { font-size: 13px; fill: #334155; }
+  </style>
+  <rect width="1200" height="600" fill="#f8fafc"/>
+  <text x="48" y="54" class="h">How long can a signature still be verified?</text>
+  <text x="48" y="80" class="sub">The signature itself never changes. What decays is the evidence around it. Each baseline level adds evidence that survives the next loss.</text>
+
+  <!-- chart area: x from 300 to 1120 = 25 years -->
+  <g transform="translate(0 120)">
+    <!-- axis -->
+    <path d="M300 340 H1120" stroke="#94a3b8" stroke-width="1.5"/>
+    <g class="ax">
+      <text x="300" y="362" text-anchor="middle">signing</text>
+      <text x="464" y="362" text-anchor="middle">5 years</text>
+      <text x="628" y="362" text-anchor="middle">10 years</text>
+      <text x="792" y="362" text-anchor="middle">15 years</text>
+      <text x="956" y="362" text-anchor="middle">20 years</text>
+      <text x="1120" y="362" text-anchor="middle">25 years</text>
+    </g>
+    <g stroke="#e2e8f0" stroke-width="1">
+      <path d="M464 0 V340"/><path d="M628 0 V340"/><path d="M792 0 V340"/><path d="M956 0 V340"/><path d="M1120 0 V340"/>
+    </g>
+
+    <!-- events -->
+    <g stroke="#b45309" stroke-width="1.5" stroke-dasharray="5 4">
+      <path d="M398 10 V340"/>
+      <path d="M563 10 V340"/>
+      <path d="M890 10 V340"/>
+    </g>
+    <text x="398" y="0" class="ev" text-anchor="middle">certificate expires (~3 y)</text>
+    <text x="563" y="0" class="ev" text-anchor="middle">CA stops CRL/OCSP (~8 y)</text>
+    <text x="890" y="0" class="ev" text-anchor="middle">hash algorithm weakened (~18 y)</text>
+
+    <!-- bars -->
+    <g>
+      <text x="48" y="58" class="lvl">B-B</text>
+      <text x="48" y="76" class="lb">signature + certificate</text>
+      <rect x="300" y="40" width="98" height="30" rx="5" fill="#94a3b8"/>
+      <text x="310" y="60" class="bar">cert valid</text>
+      <text x="408" y="60" class="lb">after expiry: no proof signing happened earlier → OUT_OF_BOUNDS_NO_POE</text>
+    </g>
+    <g>
+      <text x="48" y="128" class="lvl">B-T</text>
+      <text x="48" y="146" class="lb">+ signature timestamp</text>
+      <rect x="300" y="110" width="263" height="30" rx="5" fill="#2563eb"/>
+      <text x="310" y="130" class="bar">time of signing proven</text>
+      <text x="573" y="130" class="lb">revocation status at that time can no longer be fetched → TRY_LATER</text>
+    </g>
+    <g>
+      <text x="48" y="198" class="lvl">B-LT</text>
+      <text x="48" y="216" class="lb">+ certificates, CRL/OCSP stored in the file</text>
+      <rect x="300" y="180" width="590" height="30" rx="5" fill="#1d4ed8"/>
+      <text x="310" y="200" class="bar">all evidence travels with the document</text>
+      <text x="900" y="200" class="lb">old algorithm: CRYPTO_CONSTRAINTS_FAILURE</text>
+    </g>
+    <g>
+      <text x="48" y="268" class="lvl">B-LTA</text>
+      <text x="48" y="286" class="lb">+ archive timestamps, renewed periodically</text>
+      <rect x="300" y="250" width="820" height="30" rx="5" fill="#15803d"/>
+      <text x="310" y="270" class="bar">re-sealed by each new timestamp, with a current algorithm</text>
+      <g fill="#f0fdf4" stroke="#15803d" stroke-width="1.5">
+        <circle cx="710" cy="265" r="6"/><circle cx="890" cy="265" r="6"/><circle cx="1050" cy="265" r="6"/>
+      </g>
+      <text x="710" y="302" class="lb" text-anchor="middle">renewal</text>
+      <text x="890" y="302" class="lb" text-anchor="middle">renewal</text>
+      <text x="1050" y="302" class="lb" text-anchor="middle">renewal</text>
+    </g>
+  </g>
+
+  <text x="48" y="520" class="note">The dates are illustrative. Qualified certificates for people typically run 1 to 3 years; revocation services outlive them by years, not decades;</text>
+  <text x="48" y="540" class="note">SHA-1 took about 12 years from “first weakness” to “practical collision”. The MVP validates up to B-LTA; it does not yet produce archive timestamps.</text>
+  <text x="48" y="578" class="sub">Levels defined in ETSI EN 319 142-1 (PAdES baseline profiles).</text>
+</svg>

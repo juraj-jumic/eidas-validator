@@ -13,6 +13,27 @@ sequence number, issue date and synchronisation time it relied on.
 This tool is informational. It is not a qualified validation service in the sense of eIDAS,
 and its output is not legal advice.
 
+## Understanding what is being checked
+
+A signed PDF carries a chain of claims: that these bytes were signed with a particular key, that
+the key belongs to a named person or organisation, that the issuer of that claim is itself
+vouched for by a national supervisor, and that none of it had been withdrawn at the time. The
+guide below explains each link in plain language, with diagrams.
+
+![Three levels of electronic signature under eIDAS](docs/img/signature-levels.svg)
+
+**[How electronic signatures work](docs/how-electronic-signatures-work.md)** covers:
+
+| Section | What you will learn |
+| --- | --- |
+| [Three levels of signature](docs/how-electronic-signatures-work.md#2-three-levels-of-signature) | Simple, advanced and qualified; what each requires and what the law says about it |
+| [Certificates](docs/how-electronic-signatures-work.md#3-certificates-the-identity-papers-of-a-key) | What is inside a certificate and which kind makes a signature qualified |
+| [Trust architecture](docs/how-electronic-signatures-work.md#4-who-vouches-for-whom-the-trust-architecture) | From the Commission's list of trusted lists down to the signer's key |
+| [Inside a PDF](docs/how-electronic-signatures-work.md#5-how-a-signature-is-placed-inside-a-pdf) | Incremental updates, byte ranges and the CMS container |
+| [Tamper protection](docs/how-electronic-signatures-work.md#6-tamper-protection) | Why a single changed byte fails verification |
+| [Lifetime](docs/how-electronic-signatures-work.md#7-how-long-a-signature-stays-verifiable) | The four baseline levels and how long each stays verifiable |
+| [Validation](docs/how-electronic-signatures-work.md#8-validation-step-by-step) | The eight steps and the three possible outcomes |
+
 ## Build and run
 
 Requires JDK 17+ and Maven.

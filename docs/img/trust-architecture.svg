@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="770" viewBox="0 0 1200 770" role="img" aria-labelledby="t d">
+  <title id="t">The EU trust architecture behind a qualified signature</title>
+  <desc id="d">A chain from the European Commission's list of trusted lists, through national trusted lists and qualified trust service providers, down to the signer's certificate and the signature in the document. Side notes explain what each link proves and how a validator walks the chain upward.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1e293b; }
+    .h { font-size: 26px; font-weight: 700; }
+    .sub { font-size: 15px; fill: #64748b; }
+    .k { font-size: 12.5px; font-weight: 700; fill: #64748b; letter-spacing: .08em; }
+    .n { font-size: 16px; font-weight: 700; }
+    .nb { font-size: 13px; fill: #334155; }
+    .side { font-size: 13.5px; fill: #334155; }
+    .sidek { font-size: 13.5px; font-weight: 700; }
+    .mono { font-size: 12px; fill: #475569; font-family: Consolas, "Courier New", monospace; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="770" fill="#f8fafc"/>
+  <text x="48" y="54" class="h">Who vouches for whom: the trust chain behind a qualified signature</text>
+  <text x="48" y="80" class="sub">Trust is not built into the document. It is established link by link, and every link is a signed statement that can be checked.</text>
+
+  <!-- left column: chain -->
+  <g transform="translate(48 112)">
+    <text x="0" y="0" class="k">THE CHAIN, TOP DOWN</text>
+
+    <g transform="translate(0 20)">
+      <rect width="560" height="76" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+      <text x="20" y="30" class="n">European Commission: list of trusted lists (LOTL)</text>
+      <text x="20" y="52" class="nb">One XML file pointing to every national list. Signed with keys whose</text>
+      <text x="20" y="68" class="nb">certificates are published in the Official Journal of the EU.</text>
+    </g>
+    <path d="M280 96 V118" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g transform="translate(0 120)">
+      <rect width="560" height="76" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+      <text x="20" y="30" class="n">National trusted list, one per member state</text>
+      <text x="20" y="52" class="nb">Kept by the national supervisory body. Lists each provider and each</text>
+      <text x="20" y="68" class="nb">service with its type, status (granted/withdrawn) and status history.</text>
+    </g>
+    <path d="M280 196 V218" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g transform="translate(0 220)">
+      <rect width="560" height="96" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+      <text x="20" y="30" class="n">Qualified trust service provider (QTSP)</text>
+      <text x="20" y="52" class="nb">Audited by a conformity assessment body, supervised nationally. Its services:</text>
+      <rect x="20" y="62" width="160" height="24" rx="6" fill="#dbeafe"/><text x="30" y="79" class="nb">qualified certificates</text>
+      <rect x="190" y="62" width="150" height="24" rx="6" fill="#dbeafe"/><text x="200" y="79" class="nb">qualified timestamps</text>
+      <rect x="350" y="62" width="190" height="24" rx="6" fill="#dbeafe"/><text x="360" y="79" class="nb">qualified validation, preservation</text>
+    </g>
+    <path d="M280 316 V338" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g transform="translate(0 340)">
+      <rect width="560" height="76" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2"/>
+      <text x="20" y="30" class="n">Certificate authority (CA) of the provider</text>
+      <text x="20" y="52" class="nb">Its CA certificate is the entry on the trusted list. It issues the signer’s</text>
+      <text x="20" y="68" class="nb">certificate after identity checks and publishes CRL/OCSP revocation data.</text>
+    </g>
+    <path d="M280 416 V438" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <g transform="translate(0 440)">
+      <rect width="560" height="76" rx="10" fill="#f0fdf4" stroke="#15803d" stroke-width="2"/>
+      <text x="20" y="30" class="n" fill="#15803d">The signer’s qualified certificate</text>
+      <text x="20" y="52" class="nb">Name, public key, QC statements, validity, pointers to revocation data.</text>
+      <text x="20" y="68" class="nb">The matching private key sits on a qualified device the signer controls.</text>
+    </g>
+    <path d="M280 516 V538" stroke="#15803d" stroke-width="2" marker-end="url(#arrow)"/>
+    <g transform="translate(0 540)">
+      <rect width="560" height="48" rx="10" fill="#f0fdf4" stroke="#15803d" stroke-width="2"/>
+      <text x="20" y="30" class="n" fill="#15803d">The signature inside the PDF, over the document’s bytes</text>
+    </g>
+  </g>
+
+  <!-- right column: what each link proves -->
+  <g transform="translate(656 112)">
+    <text x="0" y="0" class="k">WHAT EACH LINK PROVES</text>
+    <g transform="translate(0 20)">
+      <text x="0" y="22" class="sidek">That the national list is genuine.</text>
+      <text x="0" y="42" class="side">The LOTL carries the signing certificate of every</text>
+      <text x="0" y="60" class="side">national list; the validator keeps the LOTL keys as</text>
+      <text x="0" y="78" class="side">its only built-in trust anchor.</text>
+    </g>
+    <g transform="translate(0 120)">
+      <text x="0" y="22" class="sidek">That the provider is qualified, and since when.</text>
+      <text x="0" y="42" class="side">Status history matters: a certificate issued while</text>
+      <text x="0" y="60" class="side">the service was “granted” stays qualified even if</text>
+      <text x="0" y="78" class="side">the service is withdrawn later.</text>
+    </g>
+    <g transform="translate(0 220)">
+      <text x="0" y="22" class="sidek">That someone audited the provider.</text>
+      <text x="0" y="42" class="side">Conformity assessment against ETSI EN 319 401/411,</text>
+      <text x="0" y="60" class="side">repeated at least every 24 months, with incident</text>
+      <text x="0" y="78" class="side">reporting duties to the supervisor.</text>
+    </g>
+    <g transform="translate(0 340)">
+      <text x="0" y="22" class="sidek">That the chain is unbroken and current.</text>
+      <text x="0" y="42" class="side">Each certificate is signed by the one above; CRL or</text>
+      <text x="0" y="60" class="side">OCSP answers, themselves signed, say whether any</text>
+      <text x="0" y="78" class="side">link has been revoked.</text>
+    </g>
+    <g transform="translate(0 440)">
+      <text x="0" y="22" class="sidek">That this key belongs to this person.</text>
+      <text x="0" y="42" class="side">Identity was verified before issue; the QC statements</text>
+      <text x="0" y="60" class="side">say the key is on a qualified device, so nobody else</text>
+      <text x="0" y="78" class="side">could have used it.</text>
+    </g>
+    <g transform="translate(0 540)">
+      <text x="0" y="22" class="sidek">That these exact bytes were signed with that key.</text>
+      <text x="0" y="42" class="side">Mathematics, not trust: see “tamper protection”.</text>
+    </g>
+  </g>
+
+  <!-- validator walks upward -->
+  <path d="M624 676 V150" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrowg)"/>
+  <rect x="612" y="396" width="24" height="60" fill="#f8fafc"/>
+  <text x="624" y="430" class="mono" text-anchor="middle" transform="rotate(90 624 430)">validator</text>
+  <text x="48" y="736" class="sub">A validator walks the chain upward, from the signature to the LOTL. Standards: trusted lists ETSI TS 119 612; certificate profiles ETSI EN 319 412;</text>
+  <text x="48" y="756" class="sub">validation ETSI EN 319 102-1; qualification ETSI TS 119 615.</text>
+</svg>

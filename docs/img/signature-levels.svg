@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="t d">
+  <title id="t">The three levels of electronic signature under eIDAS</title>
+  <desc id="d">Three ascending steps: simple, advanced and qualified electronic signatures, each listing what it requires and its legal effect.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1e293b; }
+    .h { font-size: 26px; font-weight: 700; }
+    .sub { font-size: 15px; fill: #64748b; }
+    .lvl { font-size: 21px; font-weight: 700; }
+    .tag { font-size: 12.5px; font-weight: 600; letter-spacing: .06em; }
+    .b { font-size: 14.5px; }
+    .k { font-size: 12.5px; font-weight: 700; fill: #64748b; letter-spacing: .08em; }
+    .law { font-size: 13.5px; fill: #334155; }
+    .art { font-size: 12px; fill: #64748b; }
+  </style>
+  <rect width="1200" height="600" fill="#f8fafc"/>
+  <text x="48" y="54" class="h">Three levels of electronic signature</text>
+  <text x="48" y="80" class="sub">Regulation (EU) 910/2014 (eIDAS), Articles 3 and 25. Each level includes everything below it.</text>
+
+  <path d="M48 548 H1152" stroke="#cbd5e1" stroke-width="1.5"/>
+
+  <g transform="translate(48 300)">
+    <rect width="352" height="248" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <rect x="0" y="0" width="352" height="8" rx="4" fill="#94a3b8"/>
+    <text x="24" y="44" class="tag" fill="#64748b">LEVEL 1</text>
+    <text x="24" y="74" class="lvl">Simple electronic signature</text>
+    <text x="24" y="104" class="k">WHAT IT IS</text>
+    <text x="24" y="126" class="b">Any electronic data attached to a document</text>
+    <text x="24" y="146" class="b">and used to sign: a typed name, a scanned</text>
+    <text x="24" y="166" class="b">image, a “click to accept”.</text>
+    <text x="24" y="198" class="k">LEGAL EFFECT</text>
+    <text x="24" y="220" class="law">Cannot be rejected only for being electronic.</text>
+    <text x="24" y="238" class="art">Weight as evidence is decided case by case. Art. 25(1)</text>
+  </g>
+
+  <g transform="translate(424 206)">
+    <rect width="352" height="342" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5"/>
+    <rect x="0" y="0" width="352" height="8" rx="4" fill="#2563eb"/>
+    <text x="24" y="44" class="tag" fill="#2563eb">LEVEL 2</text>
+    <text x="24" y="74" class="lvl">Advanced electronic signature</text>
+    <text x="24" y="104" class="k">WHAT IT REQUIRES</text>
+    <text x="24" y="126" class="b">1. Uniquely linked to the signer</text>
+    <text x="24" y="146" class="b">2. Capable of identifying the signer</text>
+    <text x="24" y="166" class="b">3. Created with means under the signer’s</text>
+    <text x="42" y="186" class="b">sole control</text>
+    <text x="24" y="206" class="b">4. Any later change to the data is detectable</text>
+    <text x="24" y="238" class="k">HOW IT IS DONE IN PRACTICE</text>
+    <text x="24" y="260" class="b">Public-key cryptography: a private key held by</text>
+    <text x="24" y="280" class="b">the signer, a certificate from a certificate</text>
+    <text x="24" y="300" class="b">authority binding the key to a name.</text>
+    <text x="24" y="330" class="art">Art. 3(11), Art. 26</text>
+  </g>
+
+  <g transform="translate(800 110)">
+    <rect width="352" height="438" rx="10" fill="#ffffff" stroke="#86efac" stroke-width="1.5"/>
+    <rect x="0" y="0" width="352" height="8" rx="4" fill="#15803d"/>
+    <text x="24" y="44" class="tag" fill="#15803d">LEVEL 3</text>
+    <text x="24" y="74" class="lvl">Qualified electronic signature</text>
+    <text x="24" y="104" class="k">WHAT IT REQUIRES, ON TOP OF LEVEL 2</text>
+    <text x="24" y="126" class="b">• A qualified certificate, issued by a</text>
+    <text x="42" y="146" class="b">qualified trust service provider that a</text>
+    <text x="42" y="166" class="b">national supervisor has listed on the</text>
+    <text x="42" y="186" class="b">EU trusted lists</text>
+    <text x="24" y="210" class="b">• The private key kept on a qualified</text>
+    <text x="42" y="230" class="b">signature creation device (smart card,</text>
+    <text x="42" y="250" class="b">token, or a certified remote HSM)</text>
+    <text x="24" y="274" class="b">• The signer’s identity verified in person</text>
+    <text x="42" y="294" class="b">or by an equivalent method before issue</text>
+    <text x="24" y="326" class="k">LEGAL EFFECT</text>
+    <text x="24" y="348" class="law">Equivalent to a handwritten signature.</text>
+    <text x="24" y="368" class="law">Recognised in every EU member state.</text>
+    <text x="24" y="396" class="art">Art. 3(12), Art. 25(2) and (3)</text>
+  </g>
+
+  <path d="M400 300 H424" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <path d="M776 206 H800" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+  <text x="48" y="580" class="art">Seals (Art. 35) mirror signatures for legal persons such as companies and authorities; a qualified seal guarantees origin and integrity rather than a person’s consent.</text>
+</svg>

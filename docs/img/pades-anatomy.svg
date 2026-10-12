@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="780" viewBox="0 0 1200 780" role="img" aria-labelledby="t d">
+  <title id="t">How a PAdES signature is inserted into a PDF</title>
+  <desc id="d">Left: the byte layout of a signed PDF, with the original file, an incremental update containing the signature dictionary, and the byte ranges covered by the signature. Right: what the CMS signature container holds.</desc>
+  <style>
+    text { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; fill: #1e293b; }
+    .h { font-size: 26px; font-weight: 700; }
+    .sub { font-size: 15px; fill: #64748b; }
+    .k { font-size: 12.5px; font-weight: 700; fill: #64748b; letter-spacing: .08em; }
+    .seg { font-size: 14px; font-weight: 700; }
+    .segb { font-size: 12.5px; fill: #475569; }
+    .mono { font-size: 12.5px; fill: #1e293b; font-family: Consolas, "Courier New", monospace; white-space: pre; }
+    .monom { font-size: 12px; fill: #64748b; font-family: Consolas, "Courier New", monospace; white-space: pre; }
+    .lbl { font-size: 13px; fill: #334155; }
+    .n { font-size: 15px; font-weight: 700; }
+    .nb { font-size: 13px; fill: #334155; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="780" fill="#f8fafc"/>
+  <text x="48" y="54" class="h">How a signature is placed inside a PDF (PAdES)</text>
+  <text x="48" y="80" class="sub">Nothing in the original file is rewritten. The signature is appended as an incremental update, and it covers everything except the slot that holds it.</text>
+
+  <!-- left: byte layout -->
+  <g transform="translate(48 112)">
+    <text x="0" y="0" class="k">THE FILE, BYTE BY BYTE</text>
+    <text x="0" y="22" class="segb">offset 0</text>
+
+    <!-- original document -->
+    <rect x="0" y="30" width="380" height="150" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="16" y="56" class="seg">Original document</text>
+    <text x="16" y="78" class="segb">%PDF-1.7 header, page objects, fonts, images,</text>
+    <text x="16" y="96" class="segb">cross-reference table, trailer. Untouched by signing.</text>
+    <text x="16" y="124" class="monom">%PDF-1.7</text>
+    <text x="16" y="142" class="monom">1 0 obj &lt;&lt; /Type /Catalog ... &gt;&gt;</text>
+    <text x="16" y="160" class="monom">xref ... trailer ... %%EOF</text>
+
+    <!-- incremental update -->
+    <rect x="0" y="190" width="380" height="300" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="16" y="216" class="seg" fill="#2563eb">Incremental update added by signing</text>
+    <text x="16" y="236" class="segb">New objects appended; a new xref and trailer</text>
+    <text x="16" y="254" class="segb">with /Prev point back to the original ones.</text>
+
+    <text x="16" y="284" class="mono">&lt;&lt; /Type /Sig</text>
+    <text x="16" y="302" class="mono">   /Filter /Adobe.PPKLite</text>
+    <text x="16" y="320" class="mono">   /SubFilter /ETSI.CAdES.detached</text>
+    <text x="16" y="338" class="mono">   /ByteRange [0 a b c]</text>
+    <!-- contents slot -->
+    <rect x="16" y="350" width="348" height="52" rx="6" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+    <text x="24" y="370" class="mono">   /Contents &lt;3082 0a4c 0609 ... 0000&gt;</text>
+    <text x="24" y="390" class="segb">the CMS signature, hex, padded to a fixed size</text>
+    <text x="16" y="424" class="mono">   /M (D:20260102103055Z) /Reason ... &gt;&gt;</text>
+    <text x="16" y="446" class="mono">signature field widget, AcroForm update</text>
+    <text x="16" y="466" class="monom">xref ... trailer &lt;&lt; /Prev ... &gt;&gt; %%EOF</text>
+
+    <!-- byte range brackets -->
+    <g stroke="#15803d" stroke-width="3" fill="none">
+      <path d="M392 32 V348"/>
+      <path d="M392 404 V488"/>
+    </g>
+    <g stroke="#b91c1c" stroke-width="3" fill="none">
+      <path d="M392 352 V400"/>
+    </g>
+    <text x="402" y="190" class="lbl" fill="#15803d" font-weight="700">covered: 0 to a</text>
+    <text x="402" y="378" class="lbl" fill="#b91c1c" font-weight="700">not covered: the slot itself</text>
+    <text x="402" y="450" class="lbl" fill="#15803d" font-weight="700">covered: b to b+c</text>
+    <text x="402" y="470" class="lbl">(to the end of this update)</text>
+
+    <text x="0" y="516" class="lbl">The hash that gets signed is computed over the two green ranges joined together.</text>
+    <text x="0" y="536" class="lbl">A second signer appends another update; the first signature still covers its own ranges.</text>
+  </g>
+
+  <!-- right: CMS container -->
+  <g transform="translate(640 112)">
+    <text x="0" y="0" class="k">INSIDE /CONTENTS: THE CMS SIGNEDDATA CONTAINER</text>
+    <rect x="0" y="16" width="512" height="510" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+
+    <g transform="translate(20 40)">
+      <text x="0" y="14" class="n">Certificates</text>
+      <text x="0" y="34" class="nb">The signer’s certificate and usually its issuing chain,</text>
+      <text x="0" y="52" class="nb">so a validator can start without looking anything up.</text>
+    </g>
+    <rect x="20" y="104" width="472" height="1" fill="#e2e8f0"/>
+
+    <g transform="translate(20 116)">
+      <text x="0" y="14" class="n">SignerInfo: signed attributes</text>
+      <text x="0" y="34" class="nb">These are what the private key actually signs:</text>
+      <rect x="0" y="44" width="472" height="112" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+      <text x="14" y="66" class="mono">message-digest        = hash of the ByteRange bytes</text>
+      <text x="14" y="86" class="mono">content-type          = id-data</text>
+      <text x="14" y="106" class="mono">signing-certificate-v2 = hash of the signer’s cert</text>
+      <text x="14" y="126" class="mono">(signature-policy, commitment-type, signer-location)</text>
+      <text x="14" y="146" class="nb">Binding the certificate hash here stops certificate substitution.</text>
+    </g>
+    <rect x="20" y="286" width="472" height="1" fill="#e2e8f0"/>
+
+    <g transform="translate(20 298)">
+      <text x="0" y="14" class="n">SignerInfo: signature value</text>
+      <text x="0" y="34" class="nb">The hash of the signed attributes, transformed with the private key</text>
+      <text x="0" y="52" class="nb">(RSA-PSS or ECDSA). Anyone with the public key can check it; nobody</text>
+      <text x="0" y="70" class="nb">without the private key can produce it.</text>
+    </g>
+    <rect x="20" y="382" width="472" height="1" fill="#e2e8f0"/>
+
+    <g transform="translate(20 394)">
+      <text x="0" y="14" class="n">SignerInfo: unsigned attributes</text>
+      <text x="0" y="34" class="nb">Added after signing, so they cannot be covered by the signature value:</text>
+      <text x="0" y="54" class="mono">signature-time-stamp  = a TSA’s token over the signature value</text>
+      <text x="0" y="74" class="nb">This is what turns a B-B signature into B-T: proof the signature</text>
+      <text x="0" y="92" class="nb">existed at a certain time, from a party that is not the signer.</text>
+    </g>
+  </g>
+
+  <!-- long-term bits -->
+  <g transform="translate(640 656)">
+    <rect width="512" height="88" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="20" y="28" class="n">Later incremental updates, for B-LT and B-LTA</text>
+    <text x="20" y="50" class="nb">A Document Security Store (/DSS) holding the certificates, CRLs and OCSP</text>
+    <text x="20" y="68" class="nb">responses used at validation, and a document timestamp covering all of it.</text>
+  </g>
+
+  <text x="48" y="764" class="sub">Standards: PDF ISO 32000-2 section 12.8; PAdES ETSI EN 319 142; CMS RFC 5652; CAdES ETSI EN 319 122.</text>
+</svg>
