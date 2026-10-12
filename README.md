@@ -80,6 +80,17 @@ it. Uploads are capped at 50 MB, written to a private temporary file and deleted
 check. Responses are not cached and carry a strict Content-Security-Policy; the pages need no
 JavaScript. Trusted lists are loaded once at start and refreshed when older than `--tl-max-age`.
 
+## Test corpus
+
+```bash
+java -jar target/eidas-validator.jar corpus corpus/manifest.json --mode no-trusted-lists
+```
+
+Validates every file listed in [corpus/manifest.json](corpus/manifest.json) and compares the
+outcome with the recorded expectation; `--mode full` uses the live trusted lists and online
+revocation data, `offline` the local cache. The deterministic mode runs on every build and in
+CI; the full mode runs in CI on pushes to `main`. See [corpus/README.md](corpus/README.md).
+
 ## Reports
 
 The JSON report is the source of truth; the HTML report is rendered from it, so both always

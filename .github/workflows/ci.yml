@@ -29,16 +29,18 @@ jobs:
       - name: Build
         run: mvn -B --no-transfer-progress package
 
-      # Smoke-test the packaged CLI against the committed corpus. Exit codes are part of the
-      # contract: 3 no signature, 2 indeterminate, 0 valid, 1 invalid. Trusted lists are off
-      # here to keep the job deterministic and network-free; the online test covers them.
-      - name: CLI smoke test on corpus
+      # Every manifest case, deterministic mode (anchor files only, no network). The same
+      # check runs inside the unit tests; this one exercises the packaged CLI.
+      - name: Corpus (no trusted lists)
+        run: java -jar target/eidas-validator.jar corpus corpus/manifest.json --mode no-trusted-lists
+
+      # The CLI's exit-code contract: 0 valid, 1 invalid, 2 indeterminate, 3 no signature.
+      - name: CLI exit codes
         run: |
           set -u
           jar=target/eidas-validator.jar
           anchor=corpus/generated/test-signer.pem
           at=2026-10-11T12:00:00Z
-          # The runner's shell is `bash -e`; non-zero exits are expected here, so capture them.
           expect() {
             local want=$1; shift
             local got=0
@@ -50,9 +52,6 @@ jobs:
           expect 2 corpus/generated/signed-b.pdf
           expect 0 --trust "$anchor" corpus/generated/signed-b.pdf
           expect 1 --trust "$anchor" corpus/generated/signed-b-tampered.pdf
-          # Real-world Austrian gazettes: intact, but without trusted lists the chain is unknown.
-          expect 2 corpus/public/at-bgbl-I-1-2024-amtssignatur.pdf
-          expect 2 corpus/public/at-bgbl-I-1-2026-amtssignatur.pdf
 
       - name: Upload jar
         if: matrix.java == 17
@@ -63,3 +62,22 @@ jobs:
             target/eidas-validator.jar
             target/lib/
           retention-days: 14
+
+  # Full mode against the live EU trusted lists with online revocation checks. Needs the
+  # network, so it runs on pushes to main only, after the deterministic job passed.
+  corpus-online:
+    name: Corpus (live trusted lists)
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Build without tests
+        run: mvn -B --no-transfer-progress -DskipTests package
+      - name: Corpus (full)
+        run: java -jar target/eidas-validator.jar corpus corpus/manifest.json --mode full --cache-dir target/tl-cache

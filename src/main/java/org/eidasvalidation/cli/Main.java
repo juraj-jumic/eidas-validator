@@ -32,7 +32,7 @@ import java.util.concurrent.Callable;
 @Command(name = "eidas-validator",
         mixinStandardHelpOptions = true,
         versionProvider = Main.Version.class,
-        subcommands = {ServeCommand.class},
+        subcommands = {ServeCommand.class, CorpusCommand.class},
         description = "Checks the electronic signatures in a PDF and explains the result in plain language.")
 public final class Main implements Callable<Integer> {
 

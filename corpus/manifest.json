@@ -78,6 +78,11 @@
         "indication": "INDETERMINATE",
         "subIndication": "CERTIFICATE_CHAIN_GENERAL_FAILURE"
       },
+      "noTrustedListsExpected": {
+        "indication": "INDETERMINATE",
+        "subIndication": "NO_CERTIFICATE_CHAIN_FOUND",
+        "qualified": "unknown"
+      },
       "crossChecks": {},
       "notes": "Amtssignatur of the Bundeskanzleramt, chain a-sign-corporate-07 -> A-Trust-Root-07, no timestamp. DSS qualification UNKNOWN: the Austrian trusted list carries the CA as 'CA/PKC, recognised at national level', not as a qualified certificate issuer. Offline the result is INDETERMINATE because revocation data must be fetched. Signing-time attribute present, hence PAdES-BES rather than BASELINE-B."
     },
@@ -97,6 +102,11 @@
       "offlineExpected": {
         "indication": "INDETERMINATE",
         "subIndication": "CERTIFICATE_CHAIN_GENERAL_FAILURE"
+      },
+      "noTrustedListsExpected": {
+        "indication": "INDETERMINATE",
+        "subIndication": "NO_CERTIFICATE_CHAIN_FOUND",
+        "qualified": "unknown"
       },
       "crossChecks": {},
       "notes": "Same signer and chain as the 2024 gazette; signed 2026-01-02. Serves as the current-year real-world case."
