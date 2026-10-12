@@ -42,7 +42,7 @@ class SandboxedValidatorTest {
         Files.writeString(anchor, eu.europa.esig.dss.spi.DSSUtils.convertToPEM(signer.certificate()));
 
         SandboxedValidator.Settings settings = SandboxedValidator.Settings.defaults()
-                .withJobTimeout(Duration.ofSeconds(3))
+                .withJobTimeout(Duration.ofSeconds(10)) // generous: the first job in a fresh worker is a cold JVM
                 .withMaxHeapMb(256)
                 .withExtraJvmArgs(List.of("-Deidas.worker.hangOn=hang.pdf", "-Deidas.worker.crashOn=crash.pdf"));
         sandbox = SandboxedValidator.start(ValidatorOptions.anchorsOnly(List.of(anchor)), settings);

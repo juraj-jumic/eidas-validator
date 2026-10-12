@@ -206,7 +206,7 @@ class LocalServerTest {
     @Test
     void sandboxedServerSurvivesAHangingParser() throws Exception {
         var settings = org.eidasvalidation.sandbox.SandboxedValidator.Settings.defaults()
-                .withJobTimeout(java.time.Duration.ofSeconds(3)).withMaxHeapMb(256)
+                .withJobTimeout(java.time.Duration.ofSeconds(10)).withMaxHeapMb(256)
                 .withExtraJvmArgs(List.of("-Deidas.worker.hangOn=hang.pdf"));
         var options = ValidatorOptions.anchorsOnly(List.of());
         try (LocalServer sandboxed = new LocalServer(options, java.net.InetAddress.getLoopbackAddress(), 0,
