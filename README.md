@@ -34,20 +34,18 @@ guide below explains each link in plain language, with diagrams.
 | [Lifetime](docs/how-electronic-signatures-work.md#7-how-long-a-signature-stays-verifiable) | The four baseline levels and how long each stays verifiable |
 | [Validation](docs/how-electronic-signatures-work.md#8-validation-step-by-step) | The eight steps and the three possible outcomes |
 
-## Build and run
+## Get it and run it
 
-Requires JDK 17+ and Maven. Without a build, each
-[release](https://github.com/juraj-jumic/eidas-validator/releases) ships
-`eidas-validator-<version>.zip` with the jar and its libraries: unzip it and run the `java -jar`
-command below from that folder.
-
-```bash
-mvn package
-```
+Download `eidas-validator-<version>.zip` from the
+[releases page](https://github.com/juraj-jumic/eidas-validator/releases), unzip it, and run it
+with any Java 17 or newer. Nothing else is needed: no build, no Docker, no account.
 
 ```bash
-java -jar target/eidas-validator.jar path/to/signed.pdf
+java -jar eidas-validator.jar path/to/signed.pdf
 ```
+
+The first run fetches the EU trusted lists (a few megabytes, about a minute) and caches them;
+later runs are fast. The web interface is the same jar with `serve`, described below.
 
 Options:
 
@@ -71,7 +69,7 @@ Exit codes: `0` valid, `1` invalid, `2` indeterminate, `3` no signature, `4` cou
 ## Local web interface
 
 ```bash
-java -jar target/eidas-validator.jar serve
+java -jar eidas-validator.jar serve
 ```
 
 Then open http://127.0.0.1:8765/ (change with `--port`; the trust options above apply too).
@@ -124,31 +122,6 @@ gazette issues: a qualified electronic seal (German Federal Law Gazette, PAdES-L
 electronic signature (Polish Journal of Laws) and a valid but not qualified official signature
 (Austrian Federal Law Gazette). See [corpus/README.md](corpus/README.md).
 
-## Container
-
-```bash
-docker compose up -d
-```
-
-Builds the image and serves the web interface on http://127.0.0.1:8765/ with the trusted-list
-cache in a named volume, a read-only root filesystem and a non-root user. The CLI works through
-the same image:
-
-```bash
-docker run --rm -v "$PWD:/work:ro" eidas-validator:local /work/signed.pdf --no-trusted-lists
-```
-
-Inside the container the server binds to `0.0.0.0` (`serve --bind`), so reachability is decided
-by the port mapping. The interface has no authentication: keep the mapping on `127.0.0.1`, or put
-an authenticating reverse proxy in front and pass its name with `--allow-host`, which extends the
-Host and Origin checks to that name. CI builds and smoke-tests the image on every push and
-publishes version tags to `ghcr.io/juraj-jumic/eidas-validator`, so the web interface also runs
-without a build:
-
-```bash
-docker run --rm -p 127.0.0.1:8765:8765 -v eidas-tl-cache:/data/tl-cache ghcr.io/juraj-jumic/eidas-validator:v0.1.0
-```
-
 ## Reports
 
 The JSON report is the source of truth; the HTML report is rendered from it, so both always
@@ -169,8 +142,6 @@ as `lotl-signers.pem`, and a test checks its SHA-256 fingerprints against the di
 that notice (see `src/main/resources/lotl-signers.pem` for the provenance). A list whose
 signature does not verify is rejected; an expired list is used but flagged in the report. Only
 trusted-list and revocation data ever cross the network; the document stays on your machine.
-
-The online trusted-list test is opt-in: `EIDAS_TL_ONLINE=true mvn test`.
 
 **Guarded fetching.** A validator follows URLs found inside the document's certificates (CRL
 distribution points, OCSP responders, AIA issuer links), which an attacker controls. All network
@@ -198,6 +169,41 @@ JDK 17 GA build fails on several of them with "PKIX path building failed". Use a
 update (17.0.x latest or 21). The tool also enables AIA fetching of missing intermediates and, on
 Windows, uses the operating system's root store unless `javax.net.ssl.trustStoreType` is already
 set. A list that cannot be fetched is named in the report's trust notes, not silently skipped.
+
+## Building from source
+
+Requires JDK 17+ and Maven. `mvn package` runs the tests and produces `target/eidas-validator.jar`
+with its libraries in `target/lib/`; every command above then works with
+`target/eidas-validator.jar`. The online trusted-list test is opt-in:
+`EIDAS_TL_ONLINE=true mvn test`.
+
+## Container (optional)
+
+Nothing above needs Docker. The image exists for one case: hosting the web interface on a
+server without installing Java.
+
+```bash
+docker compose up -d
+```
+
+Builds the image and serves the web interface on http://127.0.0.1:8765/ with the trusted-list
+cache in a named volume, a read-only root filesystem and a non-root user. The CLI works through
+the same image:
+
+```bash
+docker run --rm -v "$PWD:/work:ro" eidas-validator:local /work/signed.pdf --no-trusted-lists
+```
+
+Inside the container the server binds to `0.0.0.0` (`serve --bind`), so reachability is decided
+by the port mapping. The interface has no authentication: keep the mapping on `127.0.0.1`, or put
+an authenticating reverse proxy in front and pass its name with `--allow-host`, which extends the
+Host and Origin checks to that name. CI builds and smoke-tests the image on every push and
+publishes version tags to `ghcr.io/juraj-jumic/eidas-validator`, so the web interface also runs
+without a build:
+
+```bash
+docker run --rm -p 127.0.0.1:8765:8765 -v eidas-tl-cache:/data/tl-cache ghcr.io/juraj-jumic/eidas-validator:v0.2.0
+```
 
 ## Layout
 
