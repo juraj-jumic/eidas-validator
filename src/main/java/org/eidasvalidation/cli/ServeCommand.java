@@ -1,5 +1,6 @@
 package org.eidasvalidation.cli;
 
+import org.eidasvalidation.i18n.Messages;
 import org.eidasvalidation.web.LocalServer;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -18,6 +19,10 @@ public final class ServeCommand implements Callable<Integer> {
             description = "TCP port on the loopback interface (default: 8765).")
     int port;
 
+    @Option(names = "--lang", paramLabel = "<tag>", description = "Default language of the pages, e.g. en or de; "
+            + "a browser's Accept-Language header takes precedence when it names a supported language.")
+    String lang;
+
     @Mixin
     TrustOptions trust;
 
@@ -25,7 +30,7 @@ public final class ServeCommand implements Callable<Integer> {
     public Integer call() throws IOException, InterruptedException {
         LocalServer server;
         try {
-            server = new LocalServer(trust.toOptions(), port);
+            server = new LocalServer(trust.toOptions(), port, Messages.forTag(lang));
             server.start();
         } catch (IOException | RuntimeException e) {
             System.err.println("Cannot start the web interface: " + e.getMessage());

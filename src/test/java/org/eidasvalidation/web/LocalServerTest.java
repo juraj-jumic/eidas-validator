@@ -110,7 +110,7 @@ class LocalServerTest {
         assertEquals(200, r.statusCode(), r.body());
         assertTrue(r.headers().firstValue("Content-Type").orElse("").startsWith("application/json"));
         assertTrue(r.body().contains("\"verdict\" : \"INDETERMINATE\""));
-        assertTrue(r.body().contains("\"reportVersion\" : 3"));
+        assertTrue(r.body().contains("\"reportVersion\" : 4"));
     }
 
     @Test
@@ -150,6 +150,22 @@ class LocalServerTest {
             String response = new String(socket.getInputStream().readAllBytes(), StandardCharsets.US_ASCII);
             assertTrue(response.startsWith("HTTP/1.1 403"), response);
         }
+    }
+
+    @Test
+    void speaksTheBrowsersLanguageWhenSupported() throws Exception {
+        HttpResponse<String> de = http.send(HttpRequest.newBuilder(URI.create(server.url()))
+                .header("Accept-Language", "de-AT,de;q=0.9,en;q=0.5").GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, de.statusCode());
+        assertTrue(de.body().contains("lang=\"de\""));
+        assertTrue(de.body().contains("Signierte PDF-Datei prüfen"), de.body());
+
+        HttpResponse<String> fr = http.send(HttpRequest.newBuilder(URI.create(server.url()))
+                .header("Accept-Language", "fr-FR,fr;q=0.9").GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertTrue(fr.body().contains("lang=\"en\""), "unsupported language falls back to the server default");
+
+        HttpResponse<String> report = post(signedPdf, "x.pdf", "format", "json");
+        assertTrue(report.body().contains("\"language\" : \"en\""));
     }
 
     @Test

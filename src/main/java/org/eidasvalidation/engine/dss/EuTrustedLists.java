@@ -139,9 +139,10 @@ public final class EuTrustedLists {
                                           boolean offline) {
         List<LOTLInfo> lotls = jobSummary == null ? List.of() : jobSummary.getLOTLInfos();
         if (lotls.isEmpty()) {
-            return new TrustSummary("EU trusted lists: not available" + (offline ? " (offline, empty cache)" : ""),
-                    null, null, null, null, null, 0, 0, 0,
-                    List.of("The list of trusted lists could not be loaded" + (offline ? " from the cache." : ".")));
+            // Catalog keys; TrustSummary.describe(Messages) resolves them in the reader's language.
+            return new TrustSummary(offline ? "trust.tl.unavailable.offline" : "trust.tl.unavailable",
+                    null, null, null, null, null, 0, 0, 0, 0,
+                    List.of(offline ? "trust.tl.problem.notLoaded.offline" : "trust.tl.problem.notLoaded"));
         }
         LOTLInfo lotl = lotls.get(0);
         List<String> problems = new ArrayList<>();
@@ -188,7 +189,7 @@ public final class EuTrustedLists {
                 : lotl.getDownloadCacheInfo().getLastSuccessSynchronizationTime();
         var parsing = lotl.getParsingCacheInfo();
         return new TrustSummary(
-                "EU trusted lists (LOTL)" + (offline ? ", from cache" : ""),
+                offline ? "trust.tl.fromCache" : "trust.tl",
                 sync == null ? null : sync.toInstant(),
                 parsing == null ? null : parsing.getSequenceNumber() == null ? null : parsing.getSequenceNumber().longValue(),
                 parsing == null || parsing.getIssueDate() == null ? null : parsing.getIssueDate().toInstant(),
@@ -197,6 +198,7 @@ public final class EuTrustedLists {
                 tls.size(),
                 valid,
                 source.getNumberOfCertificates(),
+                0,
                 List.copyOf(problems));
     }
 

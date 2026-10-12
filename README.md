@@ -58,7 +58,8 @@ Options:
 | `--tl-max-age <hours>` | Re-download lists older than this (default 24) |
 | `--lotl-signers <file>` | Override the bundled LOTL signing certificates |
 | `--trust <cert>` | Accept an extra PEM/DER certificate as a trust anchor (repeatable) |
-| `--json` | Machine-readable report (version 3) instead of text |
+| `--lang <tag>` | Language of the explanations: `en` (default) or `de`; others fall back to English |
+| `--json` | Machine-readable report (version 4) instead of text |
 | `--html <file>` | Also write the readable, self-contained HTML report |
 | `--engine-report <file>` | Save the DSS simple report XML for the technical view |
 
@@ -79,6 +80,20 @@ a loopback name or whose `Origin` is another site, so pages you visit elsewhere 
 it. Uploads are capped at 50 MB, written to a private temporary file and deleted after the
 check. Responses are not cached and carry a strict Content-Security-Policy; the pages need no
 JavaScript. Trusted lists are loaded once at start and refreshed when older than `--tl-max-age`.
+
+## Languages
+
+Every sentence a reader sees lives in a message catalog,
+[messages.properties](src/main/resources/org/eidasvalidation/messages.properties) (English, the
+base and fallback) and one `messages_<lang>.properties` per translation; German ships as
+`messages_de.properties`. Explanations are keyed by the ETSI outcome (`failed.HASH_FAILURE.headline`,
+`indeterminate.TRY_LATER.next`, `qualification.QESIG`, …), so wording for a new sub-indication
+is a properties change, not a code change. The CLI takes `--lang`, the web interface follows
+the browser's `Accept-Language`, and the JSON report records its `language`.
+
+To add a language: copy `messages.properties` to `messages_<lang>.properties`, translate every
+value, add the locale to `Messages.SUPPORTED`. A test fails the build if a translation is
+missing a key, has a key the base lacks, or disagrees on placeholders.
 
 ## Test corpus
 

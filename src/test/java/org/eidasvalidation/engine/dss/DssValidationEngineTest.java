@@ -58,7 +58,7 @@ class DssValidationEngineTest {
         assertEquals("NO_CERTIFICATE_CHAIN_FOUND", s.subIndication());
         assertEquals("PAdES-BASELINE-B", s.format());
         assertTrue(s.signedBy().contains("Test Signer"), s.signedBy());
-        assertEquals(Verdict.INDETERMINATE, Explainer.explain(s, report.validationTime()).verdict());
+        assertEquals(Verdict.INDETERMINATE, Explainer.inEnglish(s, report.validationTime()).verdict());
     }
 
     @Test
@@ -68,7 +68,7 @@ class DssValidationEngineTest {
         ValidationReport report = new DssValidationEngine(trust, false).validate(ValidationRequest.now(signed));
         SignatureResult s = single(report);
         assertEquals("TOTAL_PASSED", s.indication(), () -> s.subIndication() + " " + s.errors());
-        assertEquals(Verdict.VALID, Explainer.explain(s, report.validationTime()).verdict());
+        assertEquals(Verdict.VALID, Explainer.inEnglish(s, report.validationTime()).verdict());
     }
 
     @Test
@@ -79,7 +79,7 @@ class DssValidationEngineTest {
         SignatureResult s = single(report);
         assertEquals("TOTAL_FAILED", s.indication(), () -> s.subIndication() + " " + s.errors());
         assertEquals("HASH_FAILURE", s.subIndication());
-        assertEquals(Verdict.INVALID, Explainer.explain(s, report.validationTime()).verdict());
+        assertEquals(Verdict.INVALID, Explainer.inEnglish(s, report.validationTime()).verdict());
     }
 
     @Test

@@ -3,6 +3,7 @@ package org.eidasvalidation.cli;
 import org.eidasvalidation.engine.SignatureResult;
 import org.eidasvalidation.engine.ValidationException;
 import org.eidasvalidation.explain.Explanation;
+import org.eidasvalidation.i18n.Messages;
 import org.eidasvalidation.report.HtmlReport;
 import org.eidasvalidation.report.Report;
 import org.eidasvalidation.report.ReportJson;
@@ -14,6 +15,8 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +27,8 @@ import java.util.concurrent.Callable;
 
 /**
  * Command line entry point: {@code eidas-validator <file>} validates a document;
- * {@code eidas-validator serve} starts the local web interface.
+ * {@code eidas-validator serve} starts the local web interface;
+ * {@code eidas-validator corpus} runs the test corpus.
  *
  * <p>Exit codes: 0 all signatures valid, 1 at least one invalid, 2 indeterminate, 3 no signature,
  * 4 could not validate.
@@ -52,6 +56,10 @@ public final class Main implements Callable<Integer> {
             + "certificate chain (default: off).")
     boolean online;
 
+    @Option(names = "--lang", paramLabel = "<tag>", description = "Language of the explanations, e.g. en or de "
+            + "(default: en; unknown languages fall back to English).")
+    String lang;
+
     @Mixin
     TrustOptions trust;
 
@@ -69,6 +77,10 @@ public final class Main implements Callable<Integer> {
     CommandLine.Model.CommandSpec spec;
 
     public static void main(String[] args) {
+        // JDK 17 encodes System.out in the platform code page; explanations carry accents in
+        // several languages, and modern terminals expect UTF-8.
+        System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
+        System.setErr(new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8));
         System.exit(new CommandLine(new Main()).execute(args));
     }
 
@@ -86,6 +98,7 @@ public final class Main implements Callable<Integer> {
             System.err.println("--offline and --online cannot be combined.");
             return EXIT_ERROR;
         }
+        Messages messages = Messages.forTag(lang);
 
         ValidationService service;
         try {
@@ -99,7 +112,7 @@ public final class Main implements Callable<Integer> {
         Report report;
         try {
             report = service.validate(document, document.getFileName().toString(),
-                    validationTime == null ? Instant.now() : validationTime, online);
+                    validationTime == null ? Instant.now() : validationTime, online, messages);
         } catch (ValidationException e) {
             System.err.println(e.getMessage());
             return EXIT_ERROR;
@@ -114,47 +127,53 @@ public final class Main implements Callable<Integer> {
         if (json) {
             System.out.println(ReportJson.write(report));
         } else {
-            printText(System.out, report);
+            printText(System.out, report, messages);
         }
         return report.exitCode();
     }
 
-    private static void printText(PrintStream out, Report report) {
-        out.println("File:       " + report.file());
-        out.println("Checked at: " + report.validationTime());
-        out.println("Engine:     " + report.engine());
-        out.println("Trust data: " + report.trust().describe());
-        for (String problem : report.trust().problems()) {
-            out.println("            note: " + problem);
+    private static void printText(PrintStream out, Report report, Messages m) {
+        String[] labels = {m.get("cli.file"), m.get("cli.checkedAt"), m.get("cli.engine"), m.get("cli.trust")};
+        int width = 1 + java.util.Arrays.stream(labels).mapToInt(String::length).max().orElse(10);
+        out.println(pad(labels[0], width) + report.file());
+        out.println(pad(labels[1], width) + report.validationTime());
+        out.println(pad(labels[2], width) + report.engine());
+        out.println(pad(labels[3], width) + report.trust().describe(m));
+        for (String problem : report.trust().describeProblems(m)) {
+            out.println(" ".repeat(width) + m.get("cli.note") + " " + problem);
         }
         out.println();
         if (report.signatures().isEmpty()) {
-            out.println("No signature found in this document.");
+            out.println(m.get("cli.noSignature"));
             return;
         }
         int n = 1;
         for (SignatureReport sr : report.signatures()) {
             SignatureResult s = sr.result();
             Explanation e = sr.explanation();
-            out.println("Signature " + n++ + " of " + report.signatures().size()
-                    + (s.signedBy() == null ? "" : " by " + s.signedBy()));
-            out.println("  " + e.verdict() + ": " + e.headline());
+            out.println(m.format("cli.signature.n", n++, report.signatures().size())
+                    + (s.signedBy() == null ? "" : m.format("cli.signature.by", s.signedBy())));
+            out.println("  " + m.get("verdict." + e.verdict().name()) + ": " + e.headline());
             out.println("  " + e.detail());
             out.println("  " + e.qualification());
-            for (String m : s.qualificationErrors()) {
-                out.println("    trusted-list detail: " + m);
+            for (String msg : s.qualificationErrors()) {
+                out.println("    " + m.get("cli.tlDetail") + " " + msg);
             }
-            for (String m : s.qualificationWarnings()) {
-                out.println("    trusted-list detail: " + m);
+            for (String msg : s.qualificationWarnings()) {
+                out.println("    " + m.get("cli.tlDetail") + " " + msg);
             }
             if (e.nextStep() != null) {
-                out.println("  What you can do: " + e.nextStep());
+                out.println("  " + m.get("cli.next") + " " + e.nextStep());
             }
-            out.println("  Technical: " + s.format() + ", " + s.indication()
+            out.println("  " + m.get("cli.technical") + " " + s.format() + ", " + s.indication()
                     + (s.subIndication() == null ? "" : " / " + s.subIndication())
-                    + (s.qualification() == null ? "" : ", qualification " + s.qualification()));
+                    + (s.qualification() == null ? "" : ", " + m.get("cli.qualification") + " " + s.qualification()));
             out.println();
         }
+    }
+
+    private static String pad(String label, int width) {
+        return label + " ".repeat(Math.max(1, width - label.length()));
     }
 
     /** Reads the version from the filtered engine.properties resource. */

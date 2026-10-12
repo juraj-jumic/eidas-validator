@@ -10,6 +10,7 @@ import org.eidasvalidation.engine.ValidationReport;
 import org.eidasvalidation.engine.ValidationRequest;
 import org.eidasvalidation.engine.dss.DssValidationEngine;
 import org.eidasvalidation.engine.dss.EuTrustedLists;
+import org.eidasvalidation.i18n.Messages;
 import org.eidasvalidation.report.Report;
 
 import java.io.IOException;
@@ -64,7 +65,7 @@ public final class ValidationService {
                 }
             }
             sources.add(extra);
-            summary = options.trustedLists() ? withExtraAnchors(summary, options.trustAnchors().size())
+            summary = options.trustedLists() ? summary.withExtraAnchors(options.trustAnchors().size())
                     : TrustSummary.anchors(options.trustAnchors().size());
         }
         if (sources.isEmpty()) {
@@ -87,24 +88,23 @@ public final class ValidationService {
                 && Instant.now().isAfter(createdAt.plus(options.tlMaxAge()));
     }
 
+    /** English report; see {@link #validate(Path, String, Instant, boolean, Messages)}. */
+    public Report validate(Path document, String displayName, Instant at, boolean online) {
+        return validate(document, displayName, at, online, Messages.english());
+    }
+
     /**
      * @param document    the file to validate
      * @param displayName name shown in the report (the original file name for uploads)
      * @param at          validation time
      * @param online      allow CRL/OCSP/AIA lookups; ignored when the service is offline
+     * @param messages    language of the explanations
      * @throws ValidationException if the document cannot be parsed at all
      */
-    public Report validate(Path document, String displayName, Instant at, boolean online) {
+    public Report validate(Path document, String displayName, Instant at, boolean online, Messages messages) {
         boolean allowNetwork = online && !options.offline();
         ValidationEngine engine = new DssValidationEngine(sources, trust, allowNetwork);
         ValidationReport vr = engine.validate(new ValidationRequest(document, at));
-        return Report.from(vr, displayName, allowNetwork);
-    }
-
-    private static TrustSummary withExtraAnchors(TrustSummary tl, int extra) {
-        return new TrustSummary(tl.source() + " plus " + extra + " anchor file(s) from the command line",
-                tl.synchronisedAt(), tl.lotlSequenceNumber(), tl.lotlIssued(), tl.lotlNextUpdate(),
-                tl.lotlSignatureValid(), tl.trustedLists(), tl.trustedListsValid(), tl.certificates() + extra,
-                tl.problems());
+        return Report.from(vr, displayName, allowNetwork, messages);
     }
 }

@@ -4,115 +4,110 @@ import org.eidasvalidation.engine.SignatureResult;
 import org.eidasvalidation.engine.TrustSummary;
 import org.eidasvalidation.explain.Explanation;
 import org.eidasvalidation.explain.Verdict;
+import org.eidasvalidation.i18n.Messages;
 
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Locale;
 
 /**
  * Renders a {@link Report} as one self-contained HTML page: no scripts, no external resources,
  * semantic headings and lists, verdicts stated in words (colour is only an accent), and the
- * technical detail one click away behind {@code <details>}.
+ * technical detail one click away behind {@code <details>}. All text comes from the report’s
+ * message catalog.
  */
 public final class HtmlReport {
-
-    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm 'UTC'", Locale.ENGLISH)
-            .withZone(ZoneOffset.UTC);
 
     private HtmlReport() {
     }
 
     public static String render(Report r) {
+        Messages m = r.messages();
         StringBuilder h = new StringBuilder(16 * 1024);
-        h.append("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
+        h.append("<!doctype html>\n<html lang=\"").append(esc(m.tag())).append("\">\n<head>\n<meta charset=\"utf-8\">\n")
          .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
-         .append("<title>Signature check: ").append(esc(r.file())).append("</title>\n")
+         .append("<title>").append(esc(m.format("html.title", r.file()))).append("</title>\n")
          .append("<style>\n").append(CSS).append("</style>\n</head>\n<body>\n<main>\n");
 
-        h.append("<header>\n<h1>Signature check</h1>\n<p class=\"file\">File: <strong>").append(esc(r.file()))
-         .append("</strong></p>\n</header>\n");
+        h.append("<header>\n<h1>").append(esc(m.get("html.h1"))).append("</h1>\n<p class=\"file\">")
+         .append(esc(m.get("html.file"))).append(" <strong>").append(esc(r.file())).append("</strong></p>\n</header>\n");
 
-        renderOverall(h, r);
-        renderSignatures(h, r);
-        renderTrust(h, r);
-        renderScope(h, r);
-        renderTechnical(h, r);
+        renderOverall(h, r, m);
+        renderSignatures(h, r, m);
+        renderTrust(h, r, m);
+        renderScope(h, r, m);
+        renderTechnical(h, r, m);
 
-        h.append("<footer>\n<p>This check is informational. It is not a qualified validation service in the sense ")
-         .append("of the eIDAS Regulation and does not constitute legal advice. Produced by eidas-validator with ")
-         .append(esc(r.engine())).append(".</p>\n</footer>\n</main>\n</body>\n</html>\n");
+        h.append("<footer>\n<p>").append(esc(m.format("html.footer", r.engine()))).append("</p>\n</footer>\n</main>\n</body>\n</html>\n");
         return h.toString();
     }
 
-    private static void renderOverall(StringBuilder h, Report r) {
+    private static void renderOverall(StringBuilder h, Report r, Messages m) {
         String cls = r.verdict().name().toLowerCase(Locale.ROOT).replace('_', '-');
         h.append("<section class=\"verdict verdict-").append(cls).append("\" aria-labelledby=\"verdict-heading\">\n");
         switch (r.verdict()) {
-            case NO_SIGNATURE -> h.append("<h2 id=\"verdict-heading\">No signature found</h2>\n")
-                    .append("<p>This document carries no electronic signature, so there is nothing to verify.</p>\n");
-            case VALID -> h.append("<h2 id=\"verdict-heading\">Valid as of ").append(TIME.format(r.validationTime()))
-                    .append("</h2>\n<p>").append(r.signatures().size() == 1 ? "The signature is" : "All "
-                            + r.signatures().size() + " signatures are")
-                    .append(" intact and the signer's certificate chains to a trusted issuer at that time. ")
-                    .append("Qualification is stated per signature below.</p>\n");
-            case INVALID -> h.append("<h2 id=\"verdict-heading\">Invalid</h2>\n<p>At least one signature failed. ")
-                    .append("Do not rely on this copy of the document. Details follow.</p>\n");
-            case INDETERMINATE -> h.append("<h2 id=\"verdict-heading\">Could not be fully verified</h2>\n")
-                    .append("<p>The check could not reach a definite answer for at least one signature. ")
-                    .append("What is missing and what you can do about it is explained below.</p>\n");
+            case NO_SIGNATURE -> heading(h, m.get("html.overall.none.h"), m.get("html.overall.none.p"));
+            case VALID -> heading(h, m.format("html.overall.valid.h", m.dateTime(r.validationTime())),
+                    r.signatures().size() == 1 ? m.get("html.overall.valid.one")
+                            : m.format("html.overall.valid.many", r.signatures().size()));
+            case INVALID -> heading(h, m.get("html.overall.invalid.h"), m.get("html.overall.invalid.p"));
+            case INDETERMINATE -> heading(h, m.get("html.overall.indeterminate.h"), m.get("html.overall.indeterminate.p"));
         }
         h.append("</section>\n");
     }
 
-    private static void renderSignatures(StringBuilder h, Report r) {
+    private static void heading(StringBuilder h, String title, String text) {
+        h.append("<h2 id=\"verdict-heading\">").append(esc(title)).append("</h2>\n<p>").append(esc(text)).append("</p>\n");
+    }
+
+    private static void renderSignatures(StringBuilder h, Report r, Messages m) {
         if (r.signatures().isEmpty()) {
             return;
         }
-        h.append("<section aria-labelledby=\"signatures-heading\">\n<h2 id=\"signatures-heading\">Signatures</h2>\n");
+        h.append("<section aria-labelledby=\"signatures-heading\">\n<h2 id=\"signatures-heading\">")
+         .append(esc(m.get("html.signatures"))).append("</h2>\n");
         int n = 1;
         for (SignatureReport sr : r.signatures()) {
             Explanation e = sr.explanation();
             SignatureResult s = sr.result();
             String cls = e.verdict().name().toLowerCase(Locale.ROOT).replace('_', '-');
             h.append("<article class=\"signature verdict-").append(cls).append("\">\n");
-            h.append("<h3>Signature ").append(n++).append(" of ").append(r.signatures().size());
+            h.append("<h3>").append(esc(m.format("html.signature.n", n++, r.signatures().size())));
             if (s.signedBy() != null) {
-                h.append(" <span class=\"by\">by ").append(esc(s.signedBy())).append("</span>");
+                h.append(" <span class=\"by\">").append(esc(m.format("html.signature.by", s.signedBy()))).append("</span>");
             }
             h.append("</h3>\n");
-            h.append("<p class=\"headline\"><strong>").append(word(e.verdict())).append(":</strong> ")
+            h.append("<p class=\"headline\"><strong>").append(esc(m.get("verdict." + e.verdict().name()))).append(":</strong> ")
              .append(esc(e.headline())).append("</p>\n");
             h.append("<p>").append(esc(e.detail())).append("</p>\n");
             h.append("<p>").append(esc(e.qualification())).append("</p>\n");
             if (!s.qualificationErrors().isEmpty() || !s.qualificationWarnings().isEmpty()) {
                 h.append("<ul class=\"details\">\n");
-                for (String m : s.qualificationErrors()) {
-                    h.append("<li>").append(esc(m)).append("</li>\n");
+                for (String msg : s.qualificationErrors()) {
+                    h.append("<li>").append(esc(msg)).append("</li>\n");
                 }
-                for (String m : s.qualificationWarnings()) {
-                    h.append("<li>").append(esc(m)).append("</li>\n");
+                for (String msg : s.qualificationWarnings()) {
+                    h.append("<li>").append(esc(msg)).append("</li>\n");
                 }
                 h.append("</ul>\n");
             }
             if (e.nextStep() != null) {
-                h.append("<p class=\"next\"><strong>What you can do:</strong> ").append(esc(e.nextStep())).append("</p>\n");
+                h.append("<p class=\"next\"><strong>").append(esc(m.get("html.next"))).append("</strong> ")
+                 .append(esc(e.nextStep())).append("</p>\n");
             }
             h.append("<dl class=\"tech\">\n");
-            dt(h, "Format", s.format());
-            dt(h, "Outcome", s.indication() + (s.subIndication() == null ? "" : " / " + s.subIndication()));
-            dt(h, "Qualification", s.qualification());
-            dt(h, "Claimed signing time", s.claimedSigningTime() == null ? "not stated"
-                    : TIME.format(s.claimedSigningTime()) + " (as claimed by the signer; proven only if timestamped)");
-            dt(h, "Signature id", s.id());
+            dt(h, m.get("html.tech.format"), s.format());
+            dt(h, m.get("html.tech.outcome"), s.indication() + (s.subIndication() == null ? "" : " / " + s.subIndication()));
+            dt(h, m.get("html.tech.qualification"), s.qualification());
+            dt(h, m.get("html.tech.claimedTime"), s.claimedSigningTime() == null ? m.get("html.tech.claimedTime.none")
+                    : m.dateTime(s.claimedSigningTime()) + " " + m.get("html.tech.claimedTime.note"));
+            dt(h, m.get("html.tech.id"), s.id());
             h.append("</dl>\n");
             if (!s.errors().isEmpty() || !s.warnings().isEmpty()) {
-                h.append("<details><summary>Engine messages for this signature</summary>\n<ul>\n");
-                for (String m : s.errors()) {
-                    h.append("<li>Error: ").append(esc(m)).append("</li>\n");
+                h.append("<details><summary>").append(esc(m.get("html.engineMessages"))).append("</summary>\n<ul>\n");
+                for (String msg : s.errors()) {
+                    h.append("<li>").append(esc(m.get("html.error"))).append(' ').append(esc(msg)).append("</li>\n");
                 }
-                for (String m : s.warnings()) {
-                    h.append("<li>Warning: ").append(esc(m)).append("</li>\n");
+                for (String msg : s.warnings()) {
+                    h.append("<li>").append(esc(m.get("html.warning"))).append(' ').append(esc(msg)).append("</li>\n");
                 }
                 h.append("</ul>\n</details>\n");
             }
@@ -121,18 +116,18 @@ public final class HtmlReport {
         h.append("</section>\n");
     }
 
-    private static void renderTrust(StringBuilder h, Report r) {
+    private static void renderTrust(StringBuilder h, Report r, Messages m) {
         TrustSummary t = r.trust();
-        h.append("<section aria-labelledby=\"trust-heading\">\n<h2 id=\"trust-heading\">What this check relied on</h2>\n<dl>\n");
-        dt(h, "Checked at", TIME.format(r.validationTime()));
-        dt(h, "Trust data", t.describe());
-        dt(h, "Revocation lookups", r.online() ? "allowed (CRL/OCSP fetched over the network)"
-                : "not performed (offline); only revocation data embedded in the document was used");
-        dt(h, "Engine", r.engine());
+        h.append("<section aria-labelledby=\"trust-heading\">\n<h2 id=\"trust-heading\">").append(esc(m.get("html.relied.h")))
+         .append("</h2>\n<dl>\n");
+        dt(h, m.get("html.relied.checkedAt"), m.dateTime(r.validationTime()));
+        dt(h, m.get("html.relied.trust"), t.describe(m));
+        dt(h, m.get("html.relied.revocation"), m.get(r.online() ? "html.relied.revocation.online" : "html.relied.revocation.offline"));
+        dt(h, m.get("html.relied.engine"), r.engine());
         h.append("</dl>\n");
         if (!t.problems().isEmpty()) {
-            h.append("<p>Notes on the trust data:</p>\n<ul>\n");
-            for (String p : t.problems()) {
+            h.append("<p>").append(esc(m.get("html.relied.notes"))).append("</p>\n<ul>\n");
+            for (String p : t.describeProblems(m)) {
                 h.append("<li>").append(esc(p)).append("</li>\n");
             }
             h.append("</ul>\n");
@@ -140,48 +135,43 @@ public final class HtmlReport {
         h.append("</section>\n");
     }
 
-    private static void renderScope(StringBuilder h, Report r) {
+    private static void renderScope(StringBuilder h, Report r, Messages m) {
         boolean tl = r.trust().usesTrustedLists();
-        h.append("<section aria-labelledby=\"scope-heading\">\n<h2 id=\"scope-heading\">What was checked, and what was not</h2>\n");
-        h.append("<h3>Checked</h3>\n<ul>\n")
-         .append("<li>That the signed parts of the document are unchanged since signing.</li>\n")
-         .append("<li>That each signature value matches the signer's certificate.</li>\n")
-         .append(tl ? "<li>That the signer's certificate chains to a provider on the EU trusted lists, and whether that provider is qualified.</li>\n"
-                    : "<li>That the signer's certificate chains to one of the trust anchors supplied for this run.</li>\n")
-         .append(r.online() ? "<li>Whether the certificates had been revoked, using current CRL/OCSP data.</li>\n"
-                            : "<li>Revocation status, but only from data embedded in the document.</li>\n")
-         .append("<li>Timestamps, where present.</li>\n</ul>\n");
-        h.append("<h3>Not checked</h3>\n<ul>\n")
-         .append("<li>Who the signer really is beyond what the certificate's issuer asserts.</li>\n")
-         .append("<li>Whether the signer was entitled to sign this document, or what the document means.</li>\n")
-         .append("<li>Parts of the document outside the signed byte ranges (for example later annotations), beyond what the engine reports.</li>\n")
-         .append(tl ? "" : "<li>EU trusted lists were not used, so qualification under eIDAS could not be assessed.</li>\n")
-         .append("</ul>\n</section>\n");
+        h.append("<section aria-labelledby=\"scope-heading\">\n<h2 id=\"scope-heading\">").append(esc(m.get("html.scope.h"))).append("</h2>\n");
+        h.append("<h3>").append(esc(m.get("html.scope.checked"))).append("</h3>\n<ul>\n");
+        li(h, m.get("html.scope.checked.integrity"));
+        li(h, m.get("html.scope.checked.value"));
+        li(h, m.get(tl ? "html.scope.checked.chain.tl" : "html.scope.checked.chain.notl"));
+        li(h, m.get(r.online() ? "html.scope.checked.revocation.online" : "html.scope.checked.revocation.offline"));
+        li(h, m.get("html.scope.checked.timestamps"));
+        h.append("</ul>\n<h3>").append(esc(m.get("html.scope.notChecked"))).append("</h3>\n<ul>\n");
+        li(h, m.get("html.scope.notChecked.identity"));
+        li(h, m.get("html.scope.notChecked.authority"));
+        li(h, m.get("html.scope.notChecked.outside"));
+        if (!tl) {
+            li(h, m.get("html.scope.notChecked.notl"));
+        }
+        h.append("</ul>\n</section>\n");
     }
 
-    private static void renderTechnical(StringBuilder h, Report r) {
-        h.append("<section aria-labelledby=\"technical-heading\">\n<h2 id=\"technical-heading\">Technical detail</h2>\n");
-        h.append("<details><summary>Report as JSON (version ").append(r.reportVersion()).append(")</summary>\n<pre>")
+    private static void renderTechnical(StringBuilder h, Report r, Messages m) {
+        h.append("<section aria-labelledby=\"technical-heading\">\n<h2 id=\"technical-heading\">").append(esc(m.get("html.technical.h"))).append("</h2>\n");
+        h.append("<details><summary>").append(esc(m.format("html.technical.json", r.reportVersion()))).append("</summary>\n<pre>")
          .append(esc(ReportJson.writeWithoutEngineReport(r))).append("</pre>\n</details>\n");
         if (r.engineReport() != null) {
-            h.append("<details><summary>Engine report (DSS simple report, XML)</summary>\n<pre>")
+            h.append("<details><summary>").append(esc(m.get("html.technical.engine"))).append("</summary>\n<pre>")
              .append(esc(r.engineReport())).append("</pre>\n</details>\n");
         }
         h.append("</section>\n");
     }
 
+    private static void li(StringBuilder h, String text) {
+        h.append("<li>").append(esc(text)).append("</li>\n");
+    }
+
     private static void dt(StringBuilder h, String term, String value) {
         h.append("<div><dt>").append(esc(term)).append("</dt><dd>").append(esc(value == null ? "—" : value))
          .append("</dd></div>\n");
-    }
-
-    private static String word(Verdict v) {
-        return switch (v) {
-            case VALID -> "Valid";
-            case INVALID -> "Invalid";
-            case INDETERMINATE -> "Undetermined";
-            case NO_SIGNATURE -> "No signature";
-        };
     }
 
     /** HTML-escapes text for element content and attribute values. */

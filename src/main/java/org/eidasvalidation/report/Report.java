@@ -6,6 +6,7 @@ import org.eidasvalidation.engine.TrustSummary;
 import org.eidasvalidation.engine.ValidationReport;
 import org.eidasvalidation.explain.Explainer;
 import org.eidasvalidation.explain.Verdict;
+import org.eidasvalidation.i18n.Messages;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.List;
  * it, so both views always say the same thing.
  *
  * @param reportVersion  bumped whenever the JSON shape changes
+ * @param language       BCP 47 tag of the language the explanations are written in
  * @param file           display name of the checked document
  * @param validationTime the time the verdicts refer to
  * @param online         whether revocation lookups over the network were allowed
@@ -26,6 +28,7 @@ import java.util.List;
  * @param engineReport   the engine's own report (DSS simple report XML)
  */
 public record Report(int reportVersion,
+                     String language,
                      String file,
                      Instant validationTime,
                      boolean online,
@@ -35,15 +38,20 @@ public record Report(int reportVersion,
                      List<SignatureReport> signatures,
                      String engineReport) {
 
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
 
     public static Report from(ValidationReport vr, String displayName, boolean online) {
+        return from(vr, displayName, online, Messages.english());
+    }
+
+    public static Report from(ValidationReport vr, String displayName, boolean online, Messages messages) {
         boolean tl = vr.trust().usesTrustedLists();
+        Explainer explainer = new Explainer(messages);
         List<SignatureReport> sigs = new ArrayList<>();
         for (SignatureResult s : vr.signatures()) {
-            sigs.add(new SignatureReport(Explainer.explain(s, vr.validationTime(), tl), s));
+            sigs.add(new SignatureReport(explainer.explain(s, vr.validationTime(), tl), s));
         }
-        return new Report(VERSION, displayName, vr.validationTime(), online, vr.engine(), vr.trust(),
+        return new Report(VERSION, messages.tag(), displayName, vr.validationTime(), online, vr.engine(), vr.trust(),
                 overall(sigs), List.copyOf(sigs), vr.engineReport());
     }
 
@@ -73,5 +81,11 @@ public record Report(int reportVersion,
             case INDETERMINATE -> 2;
             case NO_SIGNATURE -> 3;
         };
+    }
+
+    /** The catalog matching this report’s language. */
+    @JsonIgnore
+    public Messages messages() {
+        return Messages.forTag(language);
     }
 }

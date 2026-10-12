@@ -26,7 +26,7 @@ public final class ReportJson {
 
     /** JSON without the bulky engine XML, for embedding in the HTML report. */
     public static String writeWithoutEngineReport(Report report) {
-        return write(new Report(report.reportVersion(), report.file(), report.validationTime(), report.online(),
-                report.engine(), report.trust(), report.verdict(), report.signatures(), null));
+        return write(new Report(report.reportVersion(), report.language(), report.file(), report.validationTime(),
+                report.online(), report.engine(), report.trust(), report.verdict(), report.signatures(), null));
     }
 }

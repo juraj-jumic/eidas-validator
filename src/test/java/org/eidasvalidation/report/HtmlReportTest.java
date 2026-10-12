@@ -23,10 +23,14 @@ class HtmlReportTest {
         return new SignatureReport(e, r);
     }
 
-    private static Report report(SignatureReport... sigs) {
+    private static Report report(String language, SignatureReport... sigs) {
         List<SignatureReport> list = List.of(sigs);
-        return new Report(Report.VERSION, "contract <1>.pdf", Instant.parse("2026-10-11T12:00:00Z"), false,
+        return new Report(Report.VERSION, language, "contract <1>.pdf", Instant.parse("2026-10-11T12:00:00Z"), false,
                 "EU DSS 6.5", TrustSummary.none(), Report.overall(list), list, "<SimpleReport/>");
+    }
+
+    private static Report report(SignatureReport... sigs) {
+        return report("en", sigs);
     }
 
     @Test
@@ -54,6 +58,17 @@ class HtmlReportTest {
     }
 
     @Test
+    void rendersInGermanWhenTheReportIsGerman() {
+        String html = HtmlReport.render(report("de", sig(Verdict.VALID, "Alice", "TOTAL_PASSED", null)));
+        assertTrue(html.contains("lang=\"de\""));
+        assertTrue(html.contains("<h1>Signaturprüfung</h1>"));
+        assertTrue(html.contains("Gültig zum Stand 11. Oktober 2026, 12:00 UTC"));
+        assertTrue(html.contains("Worauf sich diese Prüfung stützt"));
+        var unresolved = java.util.regex.Pattern.compile("\\[[a-z]+(\\.[A-Za-z_]+)+\\]").matcher(html);
+        assertFalse(unresolved.find(), () -> "unresolved catalog key in German report: " + unresolved.group());
+    }
+
+    @Test
     void overallVerdictIsTheWorstAcrossSignatures() {
         assertEquals(Verdict.NO_SIGNATURE, Report.overall(List.of()));
         assertEquals(Verdict.VALID, Report.overall(List.of(sig(Verdict.VALID, "a", "TOTAL_PASSED", null))));
@@ -74,11 +89,13 @@ class HtmlReportTest {
     }
 
     @Test
-    void jsonRoundTripCarriesVersionAndVerdict() {
+    void jsonRoundTripCarriesVersionLanguageAndVerdict() {
         String json = ReportJson.write(report(sig(Verdict.INVALID, "Mallory", "TOTAL_FAILED", "HASH_FAILURE")));
         assertTrue(json.contains("\"reportVersion\" : " + Report.VERSION));
+        assertTrue(json.contains("\"language\" : \"en\""));
         assertTrue(json.contains("\"verdict\" : \"INVALID\""));
         assertTrue(json.contains("\"subIndication\" : \"HASH_FAILURE\""));
         assertFalse(json.contains("exitCode"), "exit code is a CLI concern, not part of the report");
+        assertFalse(json.contains("\"messages\""), "catalog accessor is not part of the report");
     }
 }
