@@ -18,7 +18,7 @@ class ExplainerTest {
     private static final Instant AT = Instant.parse("2026-10-11T20:35:00Z");
 
     private static SignatureResult result(String indication, String sub, String qualification) {
-        return new SignatureResult("S-1", "Ana", AT, "PAdES-BASELINE-B", indication, sub, qualification,
+        return SignatureResult.of("S-1", "Ana", AT, "PAdES-BASELINE-B", indication, sub, qualification,
                 List.of("engine said so"), List.of(), List.of(), List.of());
     }
 

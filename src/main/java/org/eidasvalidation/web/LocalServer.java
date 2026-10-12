@@ -7,6 +7,7 @@ import org.eidasvalidation.i18n.Messages;
 import org.eidasvalidation.report.HtmlReport;
 import org.eidasvalidation.report.Report;
 import org.eidasvalidation.report.ReportJson;
+import org.eidasvalidation.report.Theme;
 import org.eidasvalidation.sandbox.SandboxException;
 import org.eidasvalidation.service.ValidationService;
 import org.eidasvalidation.service.Validator;
@@ -336,76 +337,31 @@ public final class LocalServer implements AutoCloseable {
             trust = validator.trust().describe(m);
         }
         boolean offline = options.offline();
-        return """
-                <!doctype html>
-                <html lang="%s">
-                <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>%s</title>
-                <style>
-                :root { color-scheme: light dark; }
-                html { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-                main { max-width: 40rem; margin: 0 auto; padding: 2rem 1rem; }
-                h1 { font-size: 1.6rem; }
-                label { display: block; margin: 1rem 0 .25rem; font-weight: 600; }
-                input[type=file] { display: block; width: 100%%; padding: .5rem 0; }
-                .check { display: flex; gap: .5rem; align-items: flex-start; margin: 1rem 0; }
-                .check label { margin: 0; font-weight: normal; }
-                button { font: inherit; padding: .6rem 1.2rem; cursor: pointer; }
-                button:focus, input:focus { outline: 3px solid #8a5a00; outline-offset: 2px; }
-                .muted { opacity: .8; font-size: .95rem; }
-                .trust { border-left: .4rem solid #999; padding: .5rem .75rem; margin-top: 2rem; font-size: .95rem; }
-                </style>
-                </head>
-                <body>
-                <main>
-                <h1>%s</h1>
-                <p>%s</p>
-                <p class="muted">%s</p>
-                <form method="post" action="/validate" enctype="multipart/form-data">
-                  <label for="document">%s</label>
-                  <input id="document" name="document" type="file" accept=".pdf,application/pdf" required>
-                  <div class="check">
-                    <input id="online" name="online" type="checkbox" value="1" %s>
-                    <label for="online">%s%s</label>
-                  </div>
-                  <button type="submit">%s</button>
-                </form>
-                <section class="trust" aria-labelledby="trust-heading">
-                  <h2 id="trust-heading" style="font-size:1rem;margin:0 0 .25rem">%s</h2>
-                  <p style="margin:0">%s</p>
-                </section>
-                </main>
-                </body>
-                </html>
-                """.formatted(
-                HtmlReport.esc(m.tag()),
-                HtmlReport.esc(m.get("web.title")),
-                HtmlReport.esc(m.get("web.h1")),
-                HtmlReport.esc(m.get("web.intro")),
-                HtmlReport.esc(m.get("web.privacy")),
-                HtmlReport.esc(m.get("web.file")),
-                offline ? "disabled" : "checked",
-                HtmlReport.esc(m.get("web.online")),
-                offline ? HtmlReport.esc(m.get("web.online.unavailable")) : "",
-                HtmlReport.esc(m.get("web.submit")),
-                HtmlReport.esc(m.get("web.trust.h")),
-                HtmlReport.esc(trust));
+        StringBuilder h = new StringBuilder(8 * 1024);
+        h.append(Theme.head(m, m.get("web.title"))).append("</head>\n<body>\n").append(Theme.topbar(m));
+        h.append("<main>\n<h1>").append(HtmlReport.esc(m.get("web.h1"))).append("</h1>\n<p class=\"lead\">")
+         .append(HtmlReport.esc(m.get("web.intro"))).append("</p>\n");
+        h.append("<form class=\"card\" method=\"post\" action=\"/validate\" enctype=\"multipart/form-data\">\n<div class=\"pad\">\n");
+        h.append("<label class=\"drop\" for=\"document\">").append(Theme.ICON_UPLOAD)
+         .append("<strong>").append(HtmlReport.esc(m.get("ui.form.drop"))).append("</strong>")
+         .append("<small>").append(HtmlReport.esc(m.format("ui.form.hint", MAX_UPLOAD_BYTES / (1024 * 1024)))).append("</small>")
+         .append("<input id=\"document\" name=\"document\" type=\"file\" accept=\".pdf,application/pdf\" required></label>\n");
+        h.append("<div class=\"row\">\n<label class=\"check\"><input id=\"online\" name=\"online\" type=\"checkbox\" value=\"1\"")
+         .append(offline ? " disabled" : " checked").append("> <span>").append(HtmlReport.esc(m.get("web.online")))
+         .append(offline ? HtmlReport.esc(m.get("web.online.unavailable")) : "").append("</span></label>\n")
+         .append("<button class=\"btn\" type=\"submit\">").append(Theme.ICON_CHECK).append(HtmlReport.esc(m.get("web.submit"))).append("</button>\n</div>\n")
+         .append("<p class=\"lead\" style=\"margin:1rem 0 0;font-size:.9rem\">").append(HtmlReport.esc(m.get("web.privacy"))).append("</p>\n</div>\n");
+        h.append("<div class=\"trustline\">").append(Theme.ICON_SHIELD).append("<div><strong>").append(HtmlReport.esc(m.get("web.trust.h")))
+         .append("</strong><br>").append(HtmlReport.esc(trust)).append("</div></div>\n</form>\n</main>\n");
+        h.append(Theme.footer(m, "EU DSS")).append("</body>\n</html>\n");
+        return h.toString();
     }
 
     private static String errorPage(Messages m, String title, String text) {
-        return """
-                <!doctype html>
-                <html lang="%s"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>%s</title>
-                <style>:root{color-scheme:light dark} html{font:16px/1.5 system-ui,sans-serif} main{max-width:40rem;margin:0 auto;padding:2rem 1rem}</style>
-                </head><body><main>
-                <h1>%s</h1>
-                <p>%s</p>
-                <p><a href="/">%s</a></p>
-                </main></body></html>
-                """.formatted(HtmlReport.esc(m.tag()), HtmlReport.esc(title), HtmlReport.esc(title), HtmlReport.esc(text),
-                HtmlReport.esc(m.get("web.back")));
+        return Theme.head(m, title) + "</head>\n<body>\n" + Theme.topbar(m)
+                + "<main>\n<section class=\"banner v-invalid\">" + Theme.ICON_CROSS + "<div><h2>" + HtmlReport.esc(title)
+                + "</h2><p>" + HtmlReport.esc(text) + "</p></div></section>\n"
+                + "<p style=\"margin-top:1rem\"><a class=\"btn secondary\" href=\"/\">" + HtmlReport.esc(m.get("web.back")) + "</a></p>\n"
+                + "</main>\n</body>\n</html>\n";
     }
 }

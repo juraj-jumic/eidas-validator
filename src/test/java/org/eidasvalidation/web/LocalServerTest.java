@@ -87,7 +87,7 @@ class LocalServerTest {
         HttpResponse<String> r = http.send(HttpRequest.newBuilder(URI.create(server.url())).GET().build(),
                 HttpResponse.BodyHandlers.ofString());
         assertEquals(200, r.statusCode());
-        assertTrue(r.body().contains("<form method=\"post\" action=\"/validate\""));
+        assertTrue(r.body().contains("action=\"/validate\" enctype=\"multipart/form-data\""));
         assertTrue(r.body().contains("name=\"document\""));
         assertTrue(r.headers().firstValue("Content-Security-Policy").orElse("").contains("default-src 'none'"));
         assertEquals("no-store", r.headers().firstValue("Cache-Control").orElse(""));
@@ -100,7 +100,7 @@ class LocalServerTest {
         assertTrue(r.headers().firstValue("Content-Type").orElse("").startsWith("text/html"));
         assertTrue(r.body().contains("my contract.pdf"));
         assertTrue(r.body().contains("Web Signer"));
-        assertTrue(r.body().contains("Could not be fully verified"), "self-signed with no anchors is indeterminate");
+        assertTrue(r.body().contains("could not be fully verified"), "self-signed with no anchors is indeterminate");
         assertTrue(r.body().contains("NO_CERTIFICATE_CHAIN_FOUND"));
     }
 

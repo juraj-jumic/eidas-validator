@@ -69,6 +69,17 @@ class DssValidationEngineTest {
         SignatureResult s = single(report);
         assertEquals("TOTAL_PASSED", s.indication(), () -> s.subIndication() + " " + s.errors());
         assertEquals(Verdict.VALID, Explainer.inEnglish(s, report.validationTime()).verdict());
+
+        SignatureResult.Details d = s.details();
+        assertNotNull(d.bestSignatureTime(), "best signature time");
+        assertNotNull(d.certificateValidUntil(), "certificate validity");
+        assertEquals(1, d.certificateChain().size(), "self-signed: chain is the signer alone " + d.certificateChain());
+        assertTrue(d.certificateChain().get(0).contains("Test Signer"), d.certificateChain().toString());
+        assertEquals("FULL", d.scope(), "signature covers the whole document");
+        assertTrue(d.byteRange().startsWith("[0, "), d.byteRange());
+        assertFalse(d.modificationsDetected());
+        assertTrue(d.algorithm().startsWith("RSA-SHA256"), d.algorithm());
+        assertEquals("Signature1", d.signatureField());
     }
 
     @Test

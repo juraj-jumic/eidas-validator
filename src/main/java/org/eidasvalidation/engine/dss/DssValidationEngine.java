@@ -8,7 +8,12 @@ import eu.europa.esig.dss.model.DSSDocument;
 import eu.europa.esig.dss.model.FileDocument;
 import eu.europa.esig.dss.service.crl.OnlineCRLSource;
 import eu.europa.esig.dss.service.ocsp.OnlineOCSPSource;
+import eu.europa.esig.dss.diagnostic.CertificateWrapper;
+import eu.europa.esig.dss.diagnostic.DiagnosticData;
+import eu.europa.esig.dss.diagnostic.PDFRevisionWrapper;
+import eu.europa.esig.dss.diagnostic.SignatureWrapper;
 import eu.europa.esig.dss.simplereport.SimpleReport;
+import eu.europa.esig.dss.simplereport.jaxb.XmlSignatureScope;
 import eu.europa.esig.dss.spi.validation.CertificateVerifier;
 import eu.europa.esig.dss.spi.validation.CommonCertificateVerifier;
 import eu.europa.esig.dss.spi.x509.CertificateSource;
@@ -99,9 +104,10 @@ public final class DssValidationEngine implements ValidationEngine {
         }
 
         SimpleReport simple = reports.getSimpleReport();
+        DiagnosticData diagnostic = reports.getDiagnosticData();
         List<SignatureResult> results = new ArrayList<>();
         for (String id : simple.getSignatureIdList()) {
-            results.add(toResult(simple, id));
+            results.add(toResult(simple, diagnostic, id));
         }
         return new ValidationReport(name(), request.validationTime(), trustSummary, List.copyOf(results),
                 reports.getXmlSimpleReport());
@@ -121,7 +127,7 @@ public final class DssValidationEngine implements ValidationEngine {
         return verifier;
     }
 
-    private static SignatureResult toResult(SimpleReport simple, String id) {
+    private static SignatureResult toResult(SimpleReport simple, DiagnosticData diagnostic, String id) {
         Indication indication = simple.getIndication(id);
         SubIndication subIndication = simple.getSubIndication(id);
         SignatureQualification qualification = simple.getSignatureQualification(id);
@@ -138,7 +144,61 @@ public final class DssValidationEngine implements ValidationEngine {
                 messages(simple.getAdESValidationErrors(id)),
                 messages(simple.getAdESValidationWarnings(id)),
                 messages(simple.getQualificationErrors(id)),
-                messages(simple.getQualificationWarnings(id)));
+                messages(simple.getQualificationWarnings(id)),
+                details(simple, diagnostic, id));
+    }
+
+    /** Facts for the report; every accessor is guarded because the engine leaves them empty for broken signatures. */
+    private static SignatureResult.Details details(SimpleReport simple, DiagnosticData diagnostic, String id) {
+        SignatureWrapper sw = diagnostic == null ? null : diagnostic.getSignatureById(id);
+        CertificateWrapper signer = sw == null ? null : sw.getSigningCertificate();
+
+        List<String> chain = new ArrayList<>();
+        if (sw != null) {
+            for (CertificateWrapper c : sw.getCertificateChain()) {
+                String name = c.getReadableCertificateName();
+                chain.add(name == null || name.isBlank() ? c.getId() : name);
+            }
+        }
+
+        String field = null;
+        String byteRange = null;
+        boolean modifications = false;
+        if (sw != null && sw.getPDFRevision() != null) {
+            PDFRevisionWrapper pdf = sw.getPDFRevision();
+            field = pdf.getFirstFieldName();
+            List<java.math.BigInteger> range = pdf.getSignatureByteRange();
+            byteRange = range == null || range.isEmpty() ? null : range.toString();
+            modifications = pdf.arePdfModificationsDetected();
+        }
+
+        String scope = null;
+        String scopeDescription = null;
+        List<XmlSignatureScope> scopes = simple.getSignatureScopes(id);
+        if (scopes != null && !scopes.isEmpty()) {
+            XmlSignatureScope s = scopes.get(0);
+            scope = s.getScope() == null ? null : s.getScope().name();
+            scopeDescription = s.getValue();
+        }
+
+        String algorithm = null;
+        if (sw != null && sw.getEncryptionAlgorithm() != null && sw.getDigestAlgorithm() != null) {
+            String key = sw.getKeyLengthUsedToSignThisToken();
+            algorithm = sw.getEncryptionAlgorithm().getName() + "-" + sw.getDigestAlgorithm().getName()
+                    + (key == null || key.isBlank() || "?".equals(key) ? "" : " (" + key + " bit)");
+        }
+
+        return new SignatureResult.Details(
+                toInstant(simple.getBestSignatureTime(id)),
+                signer == null ? null : toInstant(signer.getNotBefore()),
+                signer == null ? null : toInstant(signer.getNotAfter()),
+                List.copyOf(chain),
+                field,
+                scope,
+                scopeDescription,
+                byteRange,
+                modifications,
+                algorithm);
     }
 
     private static List<String> messages(List<Message> messages) {

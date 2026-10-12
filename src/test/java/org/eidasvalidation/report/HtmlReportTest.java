@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class HtmlReportTest {
 
     private static SignatureReport sig(Verdict v, String signedBy, String indication, String sub) {
-        SignatureResult r = new SignatureResult("S-1", signedBy, Instant.parse("2026-01-02T10:30:55Z"),
+        SignatureResult r = SignatureResult.of("S-1", signedBy, Instant.parse("2026-01-02T10:30:55Z"),
                 "PAdES-BASELINE-B", indication, sub, "NA", List.of(), List.of(),
                 List.of("Unable to build a certificate chain up to a trusted list!"), List.of());
         Explanation e = new Explanation(v, "Headline <b>", "Detail & more", "Qualification text", "Next step");
@@ -48,10 +48,14 @@ class HtmlReportTest {
     @Test
     void statesVerdictInWordsAndKeepsTechnicalDetailBehindDetails() {
         String html = HtmlReport.render(report(sig(Verdict.VALID, "Alice", "TOTAL_PASSED", null)));
-        assertTrue(html.contains("<h2 id=\"verdict-heading\">Valid as of 11 October 2026, 12:00 UTC</h2>"));
-        assertTrue(html.contains("<strong>Valid:</strong>"));
-        assertTrue(html.contains("<details><summary>Report as JSON"));
-        assertTrue(html.contains("<details><summary>Engine report"));
+        assertTrue(html.contains("<h2 id=\"verdict-heading\">Document is correctly signed</h2>"));
+        assertTrue(html.contains("1 of 1 signatures valid"));
+        assertTrue(html.contains("<span class=\"badge valid\">Valid</span>"));
+        assertTrue(html.contains("<span class=\"badge\">PAdES-BASELINE-B</span>"));
+        assertTrue(html.contains("Technical details</summary>"));
+        assertTrue(html.contains("Report as JSON (version"));
+        assertTrue(html.contains("Engine report (DSS simple report, XML)</summary>"));
+        assertTrue(html.contains("11 October 2026, 12:00 UTC"), "validation time shown in the banner");
         assertTrue(html.contains("lang=\"en\""));
         assertFalse(html.contains("<script"), "report must not need scripts");
         assertFalse(html.contains("http://") || html.contains("https://"), "no external resources");
@@ -62,8 +66,10 @@ class HtmlReportTest {
         String html = HtmlReport.render(report("de", sig(Verdict.VALID, "Alice", "TOTAL_PASSED", null)));
         assertTrue(html.contains("lang=\"de\""));
         assertTrue(html.contains("<h1>Signaturprüfung</h1>"));
-        assertTrue(html.contains("Gültig zum Stand 11. Oktober 2026, 12:00 UTC"));
+        assertTrue(html.contains("Dokument ist korrekt signiert"));
+        assertTrue(html.contains("11. Oktober 2026, 12:00 UTC"));
         assertTrue(html.contains("Worauf sich diese Prüfung stützt"));
+        assertTrue(html.contains("<span class=\"badge valid\">Gültig</span>"));
         var unresolved = java.util.regex.Pattern.compile("\\[[a-z]+(\\.[A-Za-z_]+)+\\]").matcher(html);
         assertFalse(unresolved.find(), () -> "unresolved catalog key in German report: " + unresolved.group());
     }

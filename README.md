@@ -72,8 +72,17 @@ java -jar target/eidas-validator.jar serve
 ```
 
 Then open http://127.0.0.1:8765/ (change with `--port`; the trust options above apply too).
-Choose a PDF, optionally allow online revocation checks, and you get the HTML report; add a
+Choose a PDF, optionally allow online revocation checks, and you get the report; add a
 `format=json` field to the form post for JSON.
+
+![The report: status banner, signer card with badges, facts, certificate chain, explanation](docs/img/screenshot-report.png)
+
+The report leads with the verdict, then one card per signature: who signed, whether the
+signature is valid and qualified, the signing date and the earliest moment the signature is
+proven to have existed, how long the certificate is valid, whether the signature covers the
+whole PDF, the certificate chain up to the trust anchor, the plain-language reading, and the
+technical facts (byte range, signature field, algorithm, engine codes) behind a disclosure.
+Dark and light schemes follow the system setting.
 
 The server binds to the loopback interface only and refuses requests whose `Host` header is not
 a loopback name or whose `Origin` is another site, so pages you visit elsewhere cannot post to
