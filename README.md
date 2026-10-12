@@ -119,7 +119,10 @@ java -jar target/eidas-validator.jar corpus corpus/manifest.json --mode no-trust
 Validates every file listed in [corpus/manifest.json](corpus/manifest.json) and compares the
 outcome with the recorded expectation; `--mode full` uses the live trusted lists and online
 revocation data, `offline` the local cache. The deterministic mode runs on every build and in
-CI; the full mode runs in CI on pushes to `main`. See [corpus/README.md](corpus/README.md).
+CI; the full mode runs in CI on pushes to `main`. Besides generated files, the corpus holds real
+gazette issues: a qualified electronic seal (German Federal Law Gazette, PAdES-LT), a qualified
+electronic signature (Polish Journal of Laws) and a valid but not qualified official signature
+(Austrian Federal Law Gazette). See [corpus/README.md](corpus/README.md).
 
 ## Container
 

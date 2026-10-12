@@ -64,6 +64,11 @@
       <groupId>eu.europa.ec.joinup.sd-dss</groupId>
       <artifactId>dss-cms-object</artifactId>
     </dependency>
+    <!-- CRL parsing: needed for PDFs that embed revocation data (DSS dictionary, LT/LTA levels) and for CRL downloads -->
+    <dependency>
+      <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+      <artifactId>dss-crl-parser-x509crl</artifactId>
+    </dependency>
     <!-- DSS 6.5 loads the default validation policy through a pluggable factory -->
     <dependency>
       <groupId>eu.europa.ec.joinup.sd-dss</groupId>

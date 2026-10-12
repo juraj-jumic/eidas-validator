@@ -110,6 +110,57 @@
       },
       "crossChecks": {},
       "notes": "Same signer and chain as the 2024 gazette; signed 2026-01-02. Serves as the current-year real-world case."
+    },
+    {
+      "file": "public/de-bgbl-I-1-2026-qeseal.pdf",
+      "source": "German Federal Law Gazette BGBl. 2026 I Nr. 1, authentic edition from https://www.recht.bund.de/bgbl/1/2026/1/regelungstext.pdf?__blob=publicationFile&v=3; official works are free of copyright (§ 5 UrhG); § 7 VkBkmG requires a qualified electronic seal on every issue",
+      "validationTime": "2026-10-12T13:00:00Z",
+      "trustAnchors": ["EU trusted lists"],
+      "online": true,
+      "expected": {
+        "signatures": 1,
+        "indication": "TOTAL_PASSED",
+        "subIndication": null,
+        "level": "PAdES-BASELINE-LT",
+        "qualified": true
+      },
+      "offlineExpected": {
+        "indication": "TOTAL_PASSED",
+        "subIndication": null
+      },
+      "noTrustedListsExpected": {
+        "indication": "INDETERMINATE",
+        "subIndication": "NO_CERTIFICATE_CHAIN_FOUND",
+        "qualified": "unknown"
+      },
+      "crossChecks": {},
+      "notes": "Qualified electronic seal (QESEAL) of the Bundesamt für Justiz, field BfJ-Siegel, ECDSA P-384 with SHA-384, chain D-TRUST CA 2-21-2 2021 -> D-TRUST Root CA 2 2021, signature timestamp 2026-01-02T09:57:49Z and a DSS dictionary with CRLs, so the result holds offline and after the certificate expires. The DSS dictionary is an incremental update after the signature, hence scope PARTIAL with no modification. Also the regression case for CRL parsing: without dss-crl-parser-x509crl on the classpath DSS fails while reading the DSS dictionary."
+    },
+    {
+      "file": "public/pl-dzu-2025-1-qesig.pdf",
+      "source": "Polish Journal of Laws Dziennik Ustaw 2025 poz. 1 from https://dziennikustaw.gov.pl/D2025000000101.pdf; normative acts and official documents are not subject to copyright (Art. 4 of the Act on Copyright and Related Rights)",
+      "validationTime": "2026-10-12T13:00:00Z",
+      "trustAnchors": ["EU trusted lists"],
+      "online": true,
+      "expected": {
+        "signatures": 1,
+        "indication": "TOTAL_PASSED",
+        "subIndication": null,
+        "level": "PKCS7-B",
+        "qualified": true
+      },
+      "offlineExpected": {
+        "indication": "INDETERMINATE",
+        "subIndication": "CERTIFICATE_CHAIN_GENERAL_FAILURE",
+        "qualified": "unknown"
+      },
+      "noTrustedListsExpected": {
+        "indication": "INDETERMINATE",
+        "subIndication": "NO_CERTIFICATE_CHAIN_FOUND",
+        "qualified": "unknown"
+      },
+      "crossChecks": {},
+      "notes": "Qualified electronic signature (QESIG) of an official of the Government Legislation Centre, chain Certum QCA 2017 -> Narodowe Centrum Certyfikacji, RSA 3072 with SHA-256, signed 2025-01-02. Legacy PDF signature (adbe.pkcs7.detached without PAdES signed attributes, hence PKCS7-B) and no timestamp: the certificate expires 2027-01-04, after which validation at a later time has no proof of existence and becomes INDETERMINATE; validationTime is pinned before that date. Offline the result is INDETERMINATE because revocation data must be fetched."
     }
   ]
 }

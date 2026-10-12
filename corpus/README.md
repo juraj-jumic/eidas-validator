@@ -33,9 +33,13 @@ The throwaway certificate (`generated/test-signer.pem`) is valid for one year fr
 ## Public real-world files
 
 `corpus/public/` holds real signed documents whose licence allows redistribution; the manifest
-records the source URL and the legal basis for each. Current contents: authentic editions of the
-Austrian Federal Law Gazette from RIS (public domain under § 7 UrhG), signed with the Federal
-Chancellery's Amtssignatur.
+records the source URL and the legal basis for each. Current contents:
+
+| File | What it shows |
+| --- | --- |
+| `at-bgbl-I-1-2024-amtssignatur.pdf`, `at-bgbl-I-1-2026-amtssignatur.pdf` | Austrian Federal Law Gazette from RIS (public domain under § 7 UrhG): valid Amtssignatur of the Federal Chancellery, not qualified |
+| `de-bgbl-I-1-2026-qeseal.pdf` | German Federal Law Gazette from recht.bund.de (official work, § 5 UrhG): qualified electronic seal of the Bundesamt für Justiz, PAdES-BASELINE-LT with timestamp and embedded revocation data |
+| `pl-dzu-2025-1-qesig.pdf` | Polish Journal of Laws from dziennikustaw.gov.pl (official document, Art. 4 of the Polish copyright act): qualified electronic signature of an official, legacy PDF signature without timestamp |
 
 Sources tried and rejected: EUR-Lex Official Journal PDFs are authenticated with a *detached*
 XAdES signature checked by CheckLex, not with a signature inside the PDF, so they are a case for

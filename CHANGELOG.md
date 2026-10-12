@@ -5,6 +5,21 @@ Notable changes to this project are recorded here. The format follows
 versioning. Each version has a GitHub release with `eidas-validator-<version>.zip` (the jar
 and its libraries) and a container image `ghcr.io/juraj-jumic/eidas-validator:<version>`.
 
+## [Unreleased]
+
+### Fixed
+
+- PDFs with embedded revocation data (a DSS dictionary, as in PAdES-LT and LTA documents) made
+  the validator fail with "No implementation found for ICRLUtils": the build lacked DSS's CRL
+  parser module. `dss-crl-parser-x509crl` is now included; the German gazette sample in the
+  corpus guards against a regression.
+
+### Added
+
+- Two real qualified samples in the public corpus: the German Federal Law Gazette 2026 I Nr. 1
+  (qualified electronic seal, PAdES-BASELINE-LT) and the Polish Journal of Laws 2025 poz. 1
+  (qualified electronic signature).
+
 ## [0.1.0] - 2026-10-12
 
 First release.
