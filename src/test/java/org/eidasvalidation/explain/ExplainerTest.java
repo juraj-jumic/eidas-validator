@@ -62,7 +62,7 @@ class ExplainerTest {
 
     @Test
     void everyDssSubIndicationGetsASentenceInEveryLanguage() {
-        for (Messages m : List.of(Messages.english(), Messages.forTag("de"))) {
+        for (Messages m : List.of(Messages.english(), Messages.forTag("de"), Messages.forTag("hr"))) {
             Explainer x = new Explainer(m);
             for (SubIndication sub : SubIndication.values()) {
                 for (String ind : List.of("TOTAL_FAILED", "INDETERMINATE")) {

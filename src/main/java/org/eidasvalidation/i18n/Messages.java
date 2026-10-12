@@ -21,7 +21,7 @@ public final class Messages {
 
     private static final String BASE = "org.eidasvalidation.messages";
     /** Languages with a complete translation, in preference order. */
-    public static final List<Locale> SUPPORTED = List.of(Locale.ENGLISH, Locale.GERMAN);
+    public static final List<Locale> SUPPORTED = List.of(Locale.ENGLISH, Locale.GERMAN, Locale.forLanguageTag("hr"));
 
     private final Locale locale;
     private final ResourceBundle bundle;

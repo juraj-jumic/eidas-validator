@@ -57,7 +57,8 @@ class MessagesTest {
         Instant t = Instant.parse("2026-10-11T20:35:00Z");
         assertEquals("11 October 2026, 20:35 UTC", Messages.english().dateTime(t));
         assertEquals("11. Oktober 2026, 20:35 UTC", Messages.forTag("de").dateTime(t));
-        assertEquals("11 October 2026, 20:35 UTC", Messages.forTag("hr").dateTime(t), "unsupported falls back to English");
+        assertEquals("11. listopada 2026., 20:35 UTC", Messages.forTag("hr").dateTime(t));
+        assertEquals("11 October 2026, 20:35 UTC", Messages.forTag("fr").dateTime(t), "unsupported falls back to English");
     }
 
     @Test
