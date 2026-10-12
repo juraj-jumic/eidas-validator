@@ -144,3 +144,39 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.ref_name }}
             ghcr.io/${{ github.repository }}:latest
           cache-from: type=gha
+
+  # Release: for version tags, attach the runnable bundle (jar + lib/, with LICENSE and NOTICE)
+  # built by the JDK 17 job to the GitHub release of that tag, creating the release if needed.
+  release:
+    name: Release bundle
+    needs: [build, image]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: eidas-validator
+          path: eidas-validator-${{ github.ref_name }}
+      - name: Bundle
+        run: |
+          set -eu
+          dir="eidas-validator-${{ github.ref_name }}"
+          cp LICENSE NOTICE "$dir/"
+          test -f "$dir/eidas-validator.jar" && test -d "$dir/lib"
+          java -jar "$dir/eidas-validator.jar" --version
+          zip -qr "$dir.zip" "$dir"
+          sha256sum "$dir.zip" > "$dir.zip.sha256"
+          cat "$dir.zip.sha256"
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          tag="${{ github.ref_name }}"
+          gh release view "$tag" >/dev/null 2>&1 \
+            || gh release create "$tag" --verify-tag --title "$tag" --notes "See CHANGELOG.md for this version."
+          gh release upload "$tag" "eidas-validator-$tag.zip" "eidas-validator-$tag.zip.sha256" --clobber

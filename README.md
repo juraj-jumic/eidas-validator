@@ -36,7 +36,10 @@ guide below explains each link in plain language, with diagrams.
 
 ## Build and run
 
-Requires JDK 17+ and Maven.
+Requires JDK 17+ and Maven. Without a build, each
+[release](https://github.com/juraj-jumic/eidas-validator/releases) ships
+`eidas-validator-<version>.zip` with the jar and its libraries: unzip it and run the `java -jar`
+command below from that folder.
 
 ```bash
 mvn package
@@ -135,8 +138,13 @@ docker run --rm -v "$PWD:/work:ro" eidas-validator:local /work/signed.pdf --no-t
 Inside the container the server binds to `0.0.0.0` (`serve --bind`), so reachability is decided
 by the port mapping. The interface has no authentication: keep the mapping on `127.0.0.1`, or put
 an authenticating reverse proxy in front and pass its name with `--allow-host`, which extends the
-Host and Origin checks to that name. Images for version tags are published to
-`ghcr.io/juraj-jumic/eidas-validator`; CI builds and smoke-tests the image on every push.
+Host and Origin checks to that name. CI builds and smoke-tests the image on every push and
+publishes version tags to `ghcr.io/juraj-jumic/eidas-validator`, so the web interface also runs
+without a build:
+
+```bash
+docker run --rm -p 127.0.0.1:8765:8765 -v eidas-tl-cache:/data/tl-cache ghcr.io/juraj-jumic/eidas-validator:v0.1.0
+```
 
 ## Reports
 
